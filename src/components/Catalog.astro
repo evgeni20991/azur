@@ -1,0 +1,257 @@
+---
+import { products, catalog } from '../content/site';
+interface Props { compact?: boolean; }
+const { compact = false } = Astro.props;
+const list = compact ? products.slice(0, 4) : products;
+
+// Сколько размеров реально можно купить прямо сейчас. Считаем, а не пишем
+// руками: число в тексте разъезжается с остатками при первой же продаже.
+const inStock = (() => {
+  const n = products.reduce(
+    (acc, p) => acc + p.sizes.filter((sz) => (p.stock?.[sz] ?? 0) > 0).length,
+    0,
+  );
+  return `${n} размеров в наличии`;
+})();
+
+---
+<section id="catalog" class="section cat">
+  <div class="shell">
+    <div class="sec-head cat-head">
+      <div>
+        <!-- На странице каталога надзаголовок дословно повторял заголовок.
+             Вместо шума показываем то, что человеку и правда интересно
+             перед выбором: сколько размеров ещё можно купить. -->
+        <p class="label" data-reveal>{compact ? catalog.title : inStock}</p>
+        {/* На главной каталог — раздел, и заголовок второго уровня верен.
+            На собственной странице он главный: без h1 поисковик и экранная
+            читалка не понимают, о чём страница. */}
+        {compact
+          ? <h2 class="h2 cat-title" data-reveal>Часто берут</h2>
+          : <h1 class="h2 cat-title" data-reveal>{catalog.title}</h1>}
+      </div>
+      {compact
+        ? <a href="/catalog/" class="all press" data-reveal>Весь каталог →</a>
+        : <p class="lead sec-lead" data-reveal>{catalog.lead}</p>}
+    </div>
+
+    {!compact && (
+      <div class="tabs" role="tablist" data-reveal>
+        {catalog.categories.map((c, i) => (
+          <button class={`tab press${i === 0 ? ' is-on' : ''}`} role="tab" aria-selected={i === 0} data-tab={c}>{c}</button>
+        ))}
+      </div>
+    )}
+
+    <div class="grid">
+      {list.map((p) => (
+        <article class="item" data-reveal-soft data-cat={p.category} data-id={p.id}>
+          <a class="shot" href={`/product/${p.id}/`}>
+            <img src={p.photo} alt={p.name} width="900" height="1200" loading="lazy" decoding="async" data-par />
+            {p.hit && <span class="tag">часто берут</span>}
+            {p.oldPrice && <span class="tag tag-sale">−{Math.round((1 - p.price / p.oldPrice) * 100)}%</span>}
+          </a>
+          <div class="meta">
+            <div class="row">
+              <h3 class="h3"><a href={`/product/${p.id}/`}>{p.name}</a></h3>
+              <span class="colour">{p.colour}</span>
+            </div>
+            <div class="row row-price">
+              <span class="prices">
+                <span class="price numeral">{p.price.toLocaleString('ru')} ₽</span>
+                {p.oldPrice && <s class="old numeral">{p.oldPrice.toLocaleString('ru')} ₽</s>}
+              </span>
+              <button class="buy press" data-buy>{catalog.add}</button>
+            </div>
+
+            <!-- Размер выбирается прямо здесь. Раньше «В корзину» было ссылкой
+                 на страницу товара: человек жал кнопку покупки и попадал
+                 на другую страницу, где надо жать ещё раз. Обманутое
+                 ожидание на главном действии магазина. -->
+            <div class="picker" data-picker hidden>
+              <p class="picker-t">{catalog.sizeLabel}</p>
+              <div class="picker-chips">
+                {p.sizes.map((sz) => {
+                  const left = p.stock[sz] ?? 0;
+                  return (
+                    <button class="sz press" data-size={sz} disabled={left === 0}
+                      title={left === 0 ? 'Закончился' : left <= 3 ? `Осталось ${left}` : undefined}>
+                      {sz}{left > 0 && left <= 3 && <i class="few">{left}</i>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .cat-head { display: grid; gap: 18px; }
+  .cat-title { margin-top: 12px; }
+  .all { text-decoration: none; color: var(--color-muted); font-size: 0.92rem; min-height: 44px; display: inline-flex; align-items: center; }
+  .all:hover { color: var(--color-azure); }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+  .tab {
+    min-height: 44px; padding: 0 18px; border-radius: var(--radius-pill);
+    background: transparent; border: 1px solid var(--color-line);
+    color: var(--color-muted); font-size: 0.9rem; cursor: pointer;
+    transition: color var(--dur-micro) var(--ease-out-soft),
+                border-color var(--dur-micro) var(--ease-out-soft),
+                background-color var(--dur-micro) var(--ease-out-soft);
+  }
+  .tab:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  .tab.is-on { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-canvas); }
+
+  .grid { display: grid; gap: 30px 18px; grid-template-columns: repeat(2, 1fr); }
+
+  .shot {
+    display: block; position: relative; overflow: hidden;
+    border-radius: var(--radius-card); background: var(--color-mist);
+    aspect-ratio: 3 / 4;
+  }
+  /* Картинка выше рамки: остаток уходит в мягкий параллакс при прокрутке. */
+  .shot img { width: 100%; height: 112%; object-fit: cover; transition: transform 700ms var(--ease-out-soft); }
+  @media (hover: hover) { .item:hover .shot img { transform: scale(1.04); } }
+
+  .tag {
+    position: absolute; left: 10px; top: 10px;
+    padding: 5px 11px; border-radius: var(--radius-pill);
+    background: color-mix(in oklab, var(--color-canvas) 88%, transparent);
+    backdrop-filter: blur(6px);
+    font-size: 0.7rem; letter-spacing: 0.04em; color: var(--color-ink);
+  }
+  .tag-sale { left: auto; right: 10px; background: var(--color-azure); color: var(--color-on-azure); }
+
+  .meta { padding-top: 12px; display: grid; gap: 6px; }
+  /* 44px по высоте: названия и кнопки в каталоге — самые частые промахи
+     пальцем, их было семнадцать штук ниже нормы. */
+  .row a, .row h3 a { min-height: 44px; display: inline-flex; align-items: center; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  /* На узком экране цена и кнопка в одну строку не помещаются и жмут
+     друг друга. Кнопка уходит под цену и становится во всю ширину —
+     заодно в неё легче попасть пальцем. */
+  @media (max-width: 560px) {
+    /* justify-content: space-between достаётся от общего правила .row
+       и в сетке сжимает колонку по содержимому — кнопка остаётся узкой.
+       Растягиваем явно. */
+    .row-price { display: grid; gap: 8px; justify-content: stretch; }
+    .row-price .buy { width: 100%; justify-content: center; }
+  }
+  .row a { text-decoration: none; }
+  .row a:hover { color: var(--color-azure); }
+  .colour { font-size: 0.78rem; color: var(--color-faint); white-space: nowrap; }
+  /* Цена не должна переноситься: «3 200» на одной строке и «₽» на другой
+     читается как сломанная вёрстка, а это первое, что видят в каталоге.
+     В две колонки на телефоне места мало, поэтому старая цена уходит
+     под новую, а не встаёт рядом. */
+  .prices { display: grid; gap: 1px; }
+  .price { font-size: 1.02rem; font-weight: 500; white-space: nowrap; }
+  .old { color: var(--color-faint); font-weight: 400; font-size: 0.84rem; white-space: nowrap; }
+  @media (min-width: 700px) {
+    .prices { display: flex; align-items: baseline; gap: 8px; }
+  }
+  .buy {
+    min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px;
+    background: transparent; cursor: pointer;
+    border: 1px solid var(--color-line); border-radius: var(--radius-pill);
+    font-size: 0.84rem; white-space: nowrap;
+    transition: border-color var(--dur-micro) var(--ease-out-soft), background-color var(--dur-micro) var(--ease-out-soft),
+                color var(--dur-micro) var(--ease-out-soft);
+  }
+  .buy:hover { border-color: var(--color-azure); background: var(--color-azure-wash); }
+  .buy.done { background: var(--color-azure); border-color: var(--color-azure); color: var(--color-on-azure); }
+
+  .picker { margin-top: 4px; }
+  .picker[hidden] { display: none; }
+  .picker-t { font-size: 0.74rem; color: var(--color-faint); margin-bottom: 6px; }
+  .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sz {
+    position: relative; min-width: 46px; min-height: 44px; padding: 0 10px;
+    background: var(--color-canvas); border: 1px solid var(--color-line);
+    border-radius: var(--radius-soft); font-size: 0.86rem; cursor: pointer;
+    transition: border-color var(--dur-micro) var(--ease-out-soft), background-color var(--dur-micro) var(--ease-out-soft);
+  }
+  .sz:hover:not([disabled]) { border-color: var(--color-ink); }
+  /* Закончившийся размер не прячем, а показываем зачёркнутым: так видно,
+     что вещь существует, просто этот размер разобрали. */
+  .sz[disabled] { color: var(--color-faint); text-decoration: line-through; cursor: not-allowed; background: var(--color-surface); }
+  .few {
+    position: absolute; top: -6px; right: -6px; font-style: normal;
+    min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--radius-pill);
+    background: var(--color-sand); border: 1px solid var(--color-line);
+    font-size: 0.62rem; display: grid; place-items: center; color: var(--color-muted);
+  }
+
+  @media (min-width: 760px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 40px 22px; } }
+  @media (min-width: 1100px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 900px) {
+    .cat-head { grid-template-columns: 1fr auto; align-items: end; }
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { add } from '../scripts/cart';
+
+  /* «В корзину» раскрывает выбор размера прямо в карточке, а выбор размера
+     кладёт вещь в корзину. Два касания вместо перехода на другую страницу
+     и обратно. */
+  document.querySelectorAll<HTMLElement>('.item').forEach((card) => {
+    const buy = card.querySelector('[data-buy]') as HTMLButtonElement | null;
+    const picker = card.querySelector('[data-picker]') as HTMLElement | null;
+    if (!buy || !picker) return;
+
+    buy.addEventListener('click', () => {
+      const opening = picker.hidden;
+      // Закрываем чужие открытые: два раскрытых списка размеров рядом
+      // читаются как сбой, а не как выбор.
+      document.querySelectorAll<HTMLElement>('[data-picker]').forEach((el) => { if (el !== picker) el.hidden = true; });
+      picker.hidden = !opening;
+      if (opening) gsap.from(picker, { height: 0, opacity: 0, duration: 0.3, ease: 'power3.out' });
+    });
+
+    picker.querySelectorAll<HTMLButtonElement>('.sz').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        add(card.dataset.id!, btn.dataset.size!);
+        picker.hidden = true;
+        buy.classList.add('done');
+        buy.textContent = 'В корзине';
+        gsap.fromTo(buy, { scale: 0.95 }, { scale: 1, duration: 0.34, ease: 'back.out(2.4)' });
+        window.setTimeout(() => { buy.classList.remove('done'); buy.textContent = 'В корзину'; }, 1500);
+      });
+    });
+  });
+
+  /* Фильтр по разделам. Карточки не переставляются в потоке — гаснут
+     и зажигаются на месте: перестановка с анимацией на сетке всегда
+     выглядит дёргано, а разницы для человека нет. */
+  const items = [...document.querySelectorAll<HTMLElement>('.item')];
+  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => {
+        t.classList.toggle('is-on', t === tab);
+        t.setAttribute('aria-selected', String(t === tab));
+      });
+      const want = tab.dataset.tab;
+      items.forEach((el) => {
+        const show = want === 'Всё' || el.dataset.cat === want;
+        if (show) {
+          el.style.display = '';
+          gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.32, ease: 'power2.out', overwrite: true });
+        } else {
+          gsap.to(el, { opacity: 0, duration: 0.18, overwrite: true, onComplete: () => (el.style.display = 'none') });
+        }
+      });
+    });
+  });
+
+  /* Цены и остатки берём из базы: в HTML они на момент публикации сайта,
+     а владелец правит их в админке. */
+  import('../scripts/live').then((m) => m.syncCatalog());
+</script>

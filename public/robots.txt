@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /pay/
+Disallow: /order/
+Disallow: /account/
+
+Sitemap: https://azur-shop.pages.dev/sitemap-index.xml

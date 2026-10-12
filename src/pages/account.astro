@@ -1,0 +1,255 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base title="Личный кабинет">
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell">
+
+      <!-- Гость: вход и регистрация одной формой с переключателем.
+           Две отдельные страницы для этого — лишний шаг и лишний повод уйти. -->
+      <section class="guest" data-guest hidden>
+        <div class="guest-in">
+          <h1 class="h1">Личный кабинет</h1>
+          <p class="lead sub">Войдите, чтобы видеть свои заказы и не вводить адрес каждый раз.</p>
+
+          <div class="switch" role="tablist">
+            <button class="sw is-on" role="tab" data-mode="login" aria-selected="true">Вход</button>
+            <button class="sw" role="tab" data-mode="register" aria-selected="false">Регистрация</button>
+          </div>
+
+          <form class="card form" data-auth novalidate>
+            <label class="field only-reg" hidden><span>Имя</span><input name="name" type="text" autocomplete="name" /></label>
+            <label class="field"><span>Почта</span><input name="email" type="email" inputmode="email" autocomplete="email" required /></label>
+            <label class="field">
+              <span>Пароль</span>
+              <input name="password" type="password" autocomplete="current-password" minlength="8" required />
+            </label>
+            <p class="hint only-reg" hidden>Не короче восьми символов.</p>
+            {/* Согласие нужно только при регистрации: при входе данные уже
+                собраны. required включается и снимается в setMode — скрытое
+                обязательное поле заблокировало бы вход. */}
+            <label class="consent only-reg" hidden>
+              <input type="checkbox" name="consent" data-consent />
+              <span>Я согласен на обработку персональных данных и принимаю <a href="/privacy/" target="_blank" rel="noopener">политику</a></span>
+            </label>
+            <button type="submit" class="btn btn-primary press go" data-submit>Войти</button>
+            <!-- Забытый пароль без выхода — это потерянный аккаунт вместе со всей
+                 историей заказов. Ссылка нужна прямо здесь. -->
+            <button type="button" class="forgot only-log" data-forgot>Забыли пароль?</button>
+            <p class="msg" data-msg role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Свой кабинет -->
+      <section class="me" data-me hidden>
+        <header class="me-head">
+          <div>
+            <p class="label">Личный кабинет</p>
+            <h1 class="h1" data-hello>Здравствуйте</h1>
+            <p class="lead" data-email></p>
+          </div>
+          <button class="btn btn-ghost press" data-logout>Выйти</button>
+        </header>
+
+        <h2 class="h2 orders-title">Мои заказы</h2>
+        <div class="orders" data-orders></div>
+        <div class="none" data-none hidden>
+          <p class="lead">Здесь пока пусто.</p>
+          <a href="/catalog/" class="btn btn-primary press">В каталог</a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .wrap { padding-block: 44px var(--space-section); }
+  .guest-in { max-width: 460px; }
+  .sub { margin: 14px 0 22px; }
+
+  .switch { display: inline-flex; gap: 4px; padding: 4px; background: var(--color-surface); border-radius: var(--radius-pill); margin-bottom: 18px; }
+  .sw {
+    min-height: 42px; padding: 0 20px; border-radius: var(--radius-pill);
+    background: transparent; border: 0; cursor: pointer; font-size: 0.9rem; color: var(--color-muted);
+    transition: background-color var(--dur-micro) var(--ease-out-soft), color var(--dur-micro) var(--ease-out-soft);
+  }
+  .sw.is-on { background: var(--color-canvas); color: var(--color-ink); box-shadow: 0 1px 3px oklch(0.25 0.05 258 / 0.08); }
+
+  .form { padding: 22px 20px; display: grid; gap: 14px; }
+  .hint { font-size: 0.78rem; color: var(--color-faint); }
+  .go { justify-content: center; min-height: 52px; margin-top: 2px; }
+
+  .me-head { display: flex; flex-wrap: wrap; gap: 18px; align-items: start; justify-content: space-between; margin-bottom: 46px; }
+  .orders-title { margin-bottom: 22px; }
+  .orders { display: grid; gap: 14px; }
+  .none { display: grid; gap: 14px; justify-items: start; }
+  .none[hidden] { display: none; }
+  .forgot { font: inherit; font-size: 0.86rem; color: var(--color-azure); background: none;
+            border: 0; cursor: pointer; padding: 0; min-height: 44px; justify-self: start; }
+  .forgot:hover { text-decoration: underline; }
+  .forgot[hidden] { display: none; }
+</style>
+
+<script>
+  const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
+  const money = (k: number) => `${(k / 100).toLocaleString('ru')} ₽`;
+  const when = (ms: number) =>
+    new Date(ms).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Полный набор статусов. Раньше здесь были только три, и заказ
+     в пути показывался покупателю английским словом «sent». */
+  const STATUS: Record<string, string> = {
+    pending: 'Ожидает оплаты',
+    checking: 'Проверяем оплату',
+    paid: 'Оплачен',
+    sent: 'В пути',
+    done: 'Доставлен',
+    cancelled: 'Отменён',
+  };
+
+  let mode: 'login' | 'register' = 'login';
+
+  function setMode(next: 'login' | 'register') {
+    mode = next;
+    document.querySelectorAll<HTMLButtonElement>('.sw').forEach((b) => {
+      const on = b.dataset.mode === next;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll<HTMLElement>('.only-reg').forEach((el) => (el.hidden = next !== 'register'));
+    // Галочка согласия обязательна только на регистрации: скрытое поле
+    // с required не проходит проверку формы и молча блокирует вход.
+    const consent = $<HTMLInputElement>('[data-consent]');
+    if (consent) {
+      consent.required = next === 'register';
+      if (next !== 'register') consent.checked = false;
+    }
+    // «Забыли пароль?» имеет смысл только при входе: на регистрации
+    // забывать ещё нечего.
+    document.querySelectorAll<HTMLElement>('.only-log').forEach((el) => (el.hidden = next === 'register'));
+    const pass = $<HTMLInputElement>('input[name="password"]')!;
+    pass.autocomplete = next === 'register' ? 'new-password' : 'current-password';
+    $<HTMLButtonElement>('[data-submit]')!.textContent = next === 'register' ? 'Зарегистрироваться' : 'Войти';
+    const msg = $<HTMLElement>('[data-msg]')!;
+    msg.className = 'msg';
+    msg.textContent = '';
+  }
+  document.querySelectorAll<HTMLButtonElement>('.sw').forEach((b) =>
+    b.addEventListener('click', () => setMode(b.dataset.mode as 'login' | 'register')),
+  );
+
+  async function paint() {
+    const res = await fetch('/api/orders');
+    const data = await res.json();
+
+    if (!data.user) {
+      $<HTMLElement>('[data-guest]')!.hidden = false;
+      $<HTMLElement>('[data-me]')!.hidden = true;
+      return;
+    }
+
+    $<HTMLElement>('[data-guest]')!.hidden = true;
+    $<HTMLElement>('[data-me]')!.hidden = false;
+    $<HTMLElement>('[data-hello]')!.textContent = data.user.name ? `Здравствуйте, ${data.user.name}` : 'Здравствуйте';
+    $<HTMLElement>('[data-email]')!.textContent = data.user.email;
+
+    const box = $<HTMLElement>('[data-orders]')!;
+    const none = $<HTMLElement>('[data-none]')!;
+    none.hidden = data.orders.length > 0;
+
+    box.innerHTML = data.orders
+      .map(
+        (o: any) => `
+      <article class="o-card">
+        <header class="o-top">
+          <div>
+            <p class="o-id">Заказ ${o.id}</p>
+            <p class="o-date">${when(o.created_at)}</p>
+          </div>
+          <span class="o-status o-${o.status}">${STATUS[o.status] ?? o.status}</span>
+        </header>
+        <div class="o-lines">
+          ${o.items.map((i: any) => `<div class="o-line"><span>${i.name}${i.size ? ` · ${i.size}` : ''} × ${i.qty}</span><span class="numeral">${money(i.price * i.qty)}</span></div>`).join('')}
+        </div>
+        <footer class="o-foot">
+          <span class="o-addr">${o.address}</span>
+          <strong class="numeral">${money(o.total)}</strong>
+        </footer>
+      </article>`,
+      )
+      .join('');
+  }
+
+  $<HTMLFormElement>('[data-auth]')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    if (!form.reportValidity()) return;
+    const msg = $<HTMLElement>('[data-msg]')!;
+    const btn = $<HTMLButtonElement>('[data-submit]')!;
+    msg.className = 'msg';
+    msg.textContent = '';
+    btn.disabled = true;
+
+    const fd = new FormData(form);
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: mode,
+          email: fd.get('email'),
+          password: fd.get('password'),
+          name: fd.get('name') ?? '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Не получилось');
+      await paint();
+    } catch (err) {
+      msg.classList.add('err');
+      msg.textContent = (err as Error).message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('[data-logout]')?.addEventListener('click', async () => {
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    });
+    location.reload();
+  });
+
+  setMode('login');
+  paint();
+
+  /* Запрос ссылки на новый пароль. Ответ одинаков и когда почта найдена,
+     и когда нет: разный ответ позволяет перебором узнать, кто зарегистрирован. */
+  document.querySelector('[data-forgot]')?.addEventListener('click', async () => {
+    const form = document.querySelector('form') as HTMLFormElement | null;
+    const msg = document.querySelector('[data-msg]') as HTMLElement | null;
+    const email = (form?.elements.namedItem('email') as HTMLInputElement | null)?.value?.trim();
+    if (!msg) return;
+    if (!email) {
+      msg.className = 'msg err';
+      msg.textContent = 'Впишите почту — на неё пришлём ссылку.';
+      return;
+    }
+    msg.className = 'msg';
+    msg.textContent = 'Отправляем…';
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset_request', email }),
+    }).catch(() => {});
+    msg.textContent = 'Если такая почта у нас есть, ссылка для смены пароля уже в пути. Она действует час.';
+  });
+</script>

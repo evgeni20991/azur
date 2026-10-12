@@ -1,0 +1,160 @@
+---
+import { cart } from '../content/site';
+---
+<div class="scrim" data-cart-scrim hidden></div>
+<aside class="cart" data-cart hidden aria-label={cart.title}>
+  <header class="head">
+    <h2 class="h3">{cart.title}</h2>
+    <button class="x press" data-cart-close aria-label="Закрыть">✕</button>
+  </header>
+
+  <div class="list" data-cart-list></div>
+
+  <div class="empty" data-cart-empty>
+    <p class="h3">{cart.empty}</p>
+    <p class="hint">{cart.emptyHint}</p>
+    <a href="/catalog/" class="btn btn-ghost press">{cart.continue}</a>
+  </div>
+
+  <footer class="foot" data-cart-foot hidden>
+    <p class="free" data-cart-free></p>
+    <div class="sums">
+      <div><span>{cart.shipping}</span><span class="numeral" data-cart-ship>—</span></div>
+      <div class="total"><span>{cart.total}</span><strong class="numeral" data-cart-total>0 ₽</strong></div>
+    </div>
+    <a href="/checkout/" class="btn btn-primary press go">{cart.checkout}</a>
+  </footer>
+</aside>
+
+<style>
+  .scrim { position: fixed; inset: 0; z-index: 90; background: oklch(0.25 0.05 258 / 0.28); opacity: 0; }
+  .scrim[hidden] { display: none; }
+
+  .cart {
+    position: fixed; z-index: 95; right: 0; top: 0; bottom: 0;
+    width: min(430px, 100%);
+    background: var(--color-canvas);
+    border-left: 1px solid var(--color-line);
+    display: flex; flex-direction: column;
+    /* Начальное положение задаёт gsap.set в скрипте, а не CSS: смешивать
+       translateX в стилях с анимацией xPercent нельзя — GSAP считает
+       xPercent нулём и панель молча остаётся за краем экрана. */
+  }
+  .cart[hidden] { display: none; }
+
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 14px; border-bottom: 1px solid var(--color-hairline);
+  }
+  .x {
+    width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+    background: transparent; border: 1px solid var(--color-line);
+  }
+  .list { flex: 1; overflow-y: auto; padding: 4px 20px; }
+  .list:empty { display: none; }
+
+  .empty { padding: 40px 20px; display: grid; gap: 10px; justify-items: start; }
+  .empty .hint { color: var(--color-muted); font-size: 0.92rem; margin-bottom: 8px; }
+  .empty[hidden] { display: none; }
+
+  .foot { padding: 16px 20px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid var(--color-hairline); }
+  .foot[hidden] { display: none; }
+  .free {
+    font-size: 0.82rem; padding: 9px 12px; margin-bottom: 12px;
+    border-radius: var(--radius-soft); background: var(--color-azure-wash); color: var(--color-azure-deep);
+  }
+  .free:empty { display: none; }
+  .sums { display: grid; gap: 5px; margin-bottom: 14px; }
+  .sums > div { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.9rem; color: var(--color-muted); }
+  .total { color: var(--color-ink) !important; }
+  .total strong { font-size: 1.3rem; font-weight: 500; }
+  .go { width: 100%; }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { detailed, setQty, subtotal, shippingFor, FREE_FROM, onChange } from '../scripts/cart';
+
+  const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
+  const panel = $<HTMLElement>('[data-cart]');
+  const scrim = $<HTMLElement>('[data-cart-scrim]');
+  const list = $<HTMLElement>('[data-cart-list]');
+  const empty = $<HTMLElement>('[data-cart-empty]');
+  const foot = $<HTMLElement>('[data-cart-foot]');
+  const freeEl = $<HTMLElement>('[data-cart-free]');
+  const shipEl = $<HTMLElement>('[data-cart-ship]');
+  const totalEl = $<HTMLElement>('[data-cart-total]');
+
+  const money = (n: number) => `${n.toLocaleString('ru')} ₽`;
+
+  function paint() {
+    if (!list || !empty || !foot || !totalEl) return;
+    const lines = detailed();
+    list.innerHTML = lines
+      .map(
+        (l) => `
+      <div class="c-row">
+        <img class="c-shot" src="${l.photo}" alt="" width="72" height="96" loading="lazy" />
+        <div class="c-mid">
+          <p class="c-name">${l.name}</p>
+          ${l.size ? `<p class="c-size">размер ${l.size}</p>` : ''}
+          <div class="c-qty">
+            <button data-minus data-id="${l.id}" data-size="${l.size}" aria-label="Убрать одну">−</button>
+            <span>${l.qty}</span>
+            <button data-plus data-id="${l.id}" data-size="${l.size}" aria-label="Добавить одну">+</button>
+          </div>
+        </div>
+        <p class="c-sum numeral">${money(l.sum)}</p>
+      </div>`,
+      )
+      .join('');
+
+    const sum = subtotal();
+    const ship = shippingFor(sum);
+    empty.hidden = lines.length > 0;
+    foot.hidden = lines.length === 0;
+    if (shipEl) shipEl.textContent = sum === 0 ? '—' : ship === 0 ? 'бесплатно' : money(ship);
+    if (freeEl) {
+      freeEl.textContent =
+        sum === 0 ? '' : ship === 0 ? 'Доставка бесплатно' : `Добавьте ещё на ${(FREE_FROM - sum).toLocaleString('ru')} ₽ — и доставка бесплатно`;
+    }
+    totalEl.textContent = money(sum + ship);
+  }
+
+  list?.addEventListener('click', (e) => {
+    const t = (e.target as HTMLElement).closest('button');
+    if (!t) return;
+    const id = t.dataset.id!, size = t.dataset.size ?? '';
+    const cur = detailed().find((l) => l.id === id && l.size === size);
+    if (!cur) return;
+    setQty(id, size, cur.qty + (t.hasAttribute('data-plus') ? 1 : -1));
+  });
+
+  let open = false;
+  if (panel) gsap.set(panel, { xPercent: 100 });
+
+  function toggle(next: boolean) {
+    if (!panel || !scrim || open === next) return;
+    open = next;
+    if (next) { panel.hidden = false; scrim.hidden = false; paint(); }
+    gsap.to(scrim, { opacity: next ? 1 : 0, duration: 0.28, ease: 'power2.out', overwrite: true });
+    // Твин, а не CSS-переход: его можно перехватить и развернуть на полпути,
+    // если человек передумал и жмёт закрыть.
+    gsap.to(panel, {
+      xPercent: next ? 0 : 100,
+      duration: next ? 0.5 : 0.34,
+      ease: next ? 'expo.out' : 'power2.in',
+      overwrite: true,
+      onComplete: () => { if (!next) { panel.hidden = true; scrim.hidden = true; } },
+    });
+    document.body.style.overflow = next ? 'hidden' : '';
+  }
+
+  document.querySelectorAll('[data-cart-open]').forEach((b) => b.addEventListener('click', () => toggle(true)));
+  $('[data-cart-close]')?.addEventListener('click', () => toggle(false));
+  scrim?.addEventListener('click', () => toggle(false));
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && toggle(false));
+
+  onChange(paint);
+  paint();
+</script>

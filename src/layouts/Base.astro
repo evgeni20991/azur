@@ -1,0 +1,127 @@
+---
+import '../styles/theme.css';
+import { meta } from '../content/site';
+interface Props { title?: string; description?: string; noindex?: boolean; }
+const { title, description, noindex } = Astro.props;
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title ? `${title} — azur` : meta.title}</title>
+    <meta name="description" content={description ?? meta.description} />
+    {/* Служебные страницы не должны попадать в поиск: панель управления
+        в выдаче — приглашение подбирать пароль. */}
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:title" content={title ?? meta.title} />
+    <meta property="og:description" content={description ?? meta.description} />
+    <meta name="theme-color" content="#FBFCFE" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Шрифты свои, с этого же домена: запрос к серверам Google отдаёт им
+         IP посетителя. Предзагружаем только кириллицу — сайт русский. -->
+    <link rel="preload" href="/fonts/unbounded-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Название бренда «azur» на первом экране — латиница, огромным кеглем.
+         Без предзагрузки латинский файл приезжал поздно, слово перерисовывалось,
+         и Lighthouse насчитал сдвиг макета 0,49 на компьютере. -->
+    <link rel="preload" href="/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/onest-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <a href="#main" class="skip">К содержанию</a>
+    <slot />
+
+    <style>
+      .skip {
+        position: absolute; left: -9999px; top: 12px; z-index: 200;
+        background: var(--color-azure); color: var(--color-on-azure);
+        padding: 12px 20px; border-radius: var(--radius-pill); text-decoration: none;
+      }
+      .skip:focus { left: 16px; }
+    </style>
+
+    <script>
+      import gsap from 'gsap';
+      import { ScrollTrigger } from 'gsap/ScrollTrigger';
+      import Lenis from 'lenis';
+      gsap.registerPlugin(ScrollTrigger);
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      /* Сторож: если requestAnimationFrame не тикает, GSAP не доиграет и
+         страница останется пустой. setTimeout в таких условиях работает. */
+      let ticks = 0;
+      const tick = () => { ticks++; if (ticks < 3) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      setTimeout(() => {
+        if (ticks < 2) {
+          document.documentElement.classList.add('motion-dead');
+          ScrollTrigger.getAll().forEach((st) => st.kill(false));
+        }
+      }, 1400);
+
+      if (!reduced) {
+        const lenis = new Lenis({
+          duration: 1.25,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          smoothWheel: true,
+          smoothTouch: false,
+        });
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => lenis.raf(time * 1000));
+        gsap.ticker.lagSmoothing(0);
+
+        document.querySelectorAll('a[href^="#"]').forEach((a) => {
+          a.addEventListener('click', (e) => {
+            const id = a.getAttribute('href');
+            if (!id || id === '#') return;
+            const el = document.querySelector(id);
+            if (!el) return;
+            e.preventDefault();
+            lenis.scrollTo(el, { offset: -72, duration: 1.15 });
+          });
+        });
+
+        /* Текст: короткий выезд плюс раскрытие маской снизу вверх — текст
+           открывается, а не прилетает. */
+        ScrollTrigger.batch('[data-reveal]', {
+          start: 'top 86%', once: true,
+          onEnter: (els) => gsap.from(els, {
+            y: 20, opacity: 0, clipPath: 'inset(0 0 100% 0)',
+            duration: 0.78, ease: 'expo.out', stagger: 0.05, overwrite: true,
+          }),
+        });
+
+        /* Карточки сеток: только прозрачность и маска, БЕЗ вертикали.
+           Ряд сетки читается как выровненная структура — сдвиг внутри ряда
+           выглядит поломкой вёрстки, даже если длится 400 мс. */
+        ScrollTrigger.batch('[data-reveal-soft]', {
+          start: 'top 88%', once: true,
+          onEnter: (els) => gsap.from(els, {
+            opacity: 0, clipPath: 'inset(0 0 100% 0)',
+            duration: 0.85, ease: 'expo.out', stagger: 0.06, overwrite: true,
+          }),
+        });
+
+        /* Мягкий параллакс на фотографиях товара: картинка внутри рамки
+           едет медленнее страницы. Задержка 0.6 даёт инерцию — без неё
+           движение «прибито» к колесу и читается механическим. */
+        gsap.utils.toArray<HTMLElement>('[data-par]').forEach((el) => {
+          gsap.fromTo(el, { yPercent: -6 }, {
+            yPercent: 6, ease: 'none',
+            scrollTrigger: { trigger: el.parentElement, start: 'top bottom', end: 'bottom top', scrub: 0.6 },
+          });
+        });
+
+        /* Бегущая строка: сдвигаем одну копию на её ширину и зацикливаем —
+           шва не видно, потому что вторая копия ровно продолжает первую. */
+        gsap.utils.toArray<HTMLElement>('[data-marquee]').forEach((row) => {
+          const w = row.scrollWidth / 2;
+          gsap.to(row, { x: -w, duration: w / 46, ease: 'none', repeat: -1 });
+        });
+      } else {
+        document.documentElement.classList.add('motion-dead');
+      }
+    </script>
+  </body>
+</html>

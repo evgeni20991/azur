@@ -1,0 +1,169 @@
+---
+import { hero } from '../content/site';
+const letters = hero.word.split('');
+---
+<section class="hero">
+  <div class="shell">
+    <p class="label" data-hero>{hero.eyebrow}</p>
+  </div>
+
+  <!-- Слово идёт от края до края, вне общей сетки. Кегль подбирается
+       скриптом по реальной ширине букв: через vw он на одних ширинах
+       не доходит до края, на других вылезает — «на глаз» тут не работает. -->
+  <div class="stage" data-stage>
+    <h1 class="display word" data-word aria-label={hero.word}>
+      {letters.map((ch) => (
+        <span class="ch"><span class="ch-in" data-letter aria-hidden="true">{ch}</span></span>
+      ))}
+    </h1>
+  </div>
+
+  <div class="shell">
+    <div class="under">
+      <p class="lead hero-lead" data-hero>{hero.lead}</p>
+      <div class="cta" data-hero>
+        <a href="/catalog/" class="btn btn-primary press">{hero.ctaPrimary}</a>
+        <a href="#about" class="btn btn-ghost press">{hero.ctaSecondary}</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-row" data-marquee>
+      {[...hero.marquee, ...hero.marquee].map((t) => (
+        <span class="mq"><i></i>{t}</span>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero { padding-top: clamp(40px, 6vw, 84px); padding-bottom: 0; overflow: hidden; }
+
+  .stage {
+    width: 100%; margin: clamp(10px, 2vw, 26px) 0 clamp(24px, 3.5vw, 44px);
+    display: flex; justify-content: center;
+    /* Контейнер для cqw: кегль слова считается от ширины сцены, а не окна —
+       vw включает полосу прокрутки и дал бы горизонтальный перелив. */
+    container-type: inline-size;
+  }
+  .word {
+    /* inline-flex, а не flex: блочный элемент растянут на всю ширину
+       по определению, и измерение его ширины всегда возвращало ширину
+       экрана — кегль из-за этого не подбирался вовсе. inline-flex
+       обжимается по содержимому, и мерить становится что. */
+    display: inline-flex;
+    line-height: 0.78;
+    letter-spacing: 0;      /* трекингом не подгоняем — подгоняем кеглем */
+    white-space: nowrap;
+    /* Стартовое значение на случай, если скрипт не отработал: слово всё равно
+       будет крупным и осмысленным, просто не впритык к краям. */
+    font-size: clamp(4.5rem, 25vw, 20rem);
+    /* Точный кегль сразу, без скрипта: слово Unbounded в 200px шириной 543px,
+       значит впритык к краям — 200 × 0.995 / 543 = 0.36648 ширины сцены.
+       Замерено Playwright 18.09.2026 на 1440 и 390 px, совпало до десятых.
+       Высота строки теперь не зависит от того, какой шрифт успел загрузиться,
+       и контент под словом при смене шрифта не сдвигается. */
+    font-size: 36.648cqw;
+  }
+  /* Каждая буква — своя маска: буква выезжает из-под неё, а не появляется
+     из ниоткуда. Так движение читается физическим.
+
+     Поля с равным отрицательным отступом обязательны. При line-height 0.78
+     строка НИЖЕ самих букв, и overflow: hidden срезает им верх и низ —
+     именно это и выглядело как обрезанная надпись. Поля расширяют область
+     обрезки, отрицательный отступ возвращает вёрстку на место, так что
+     плотный набор сохраняется, а буквы больше не режутся. */
+  .ch {
+    display: block; overflow: hidden;
+    padding: 0.18em 0.04em;
+    margin: -0.18em -0.04em;
+  }
+  .ch-in { display: block; will-change: transform; }
+
+  .under { display: grid; gap: 22px; padding-bottom: clamp(36px, 5vw, 64px); }
+  .hero-lead { max-width: 44ch; }
+  .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .marquee {
+    border-block: 1px solid var(--color-line);
+    background: var(--color-sand);
+    padding-block: 13px; overflow: hidden;
+  }
+  .marquee-row { display: flex; gap: 40px; width: max-content; will-change: transform; }
+  .mq {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: 0.82rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--color-muted); white-space: nowrap;
+  }
+  .mq i { width: 5px; height: 5px; border-radius: 50%; background: var(--color-azure); }
+
+  @media (min-width: 900px) {
+    .under { grid-template-columns: 1fr auto; align-items: end; gap: 40px; }
+  }
+  @media (max-width: 520px) { .cta .btn { flex: 1 1 100%; } }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  const stage = document.querySelector('[data-stage]') as HTMLElement | null;
+  const word = document.querySelector('[data-word]') as HTMLElement | null;
+
+  /**
+   * Подгоняем кегль под ширину экрана.
+   * Меряем слово на заведомо крупном размере и масштабируем пропорцией.
+   * Дожидаемся загрузки шрифта: до этого браузер меряет подменный,
+   * у него другая ширина, и слово встанет мимо края.
+   */
+  function fit() {
+    if (!stage || !word) return;
+    const target = stage.clientWidth;
+    if (!target) return;
+    word.style.fontSize = '200px';
+    const natural = word.scrollWidth;
+    if (!natural) return;
+    // 0.5% запаса: субпиксельное округление иначе даёт горизонтальную полосу
+    word.style.fontSize = `${((200 * target) / natural) * 0.995}px`;
+  }
+
+  const run = () => { fit(); ScrollTrigger.refresh(); };
+  /* Кегль уже задан в CSS, поэтому подменный шрифт до загрузки не мерим:
+     первая подгонка по нему и давала сдвиг макета 0,49 на компьютере.
+     Подгоняем один раз — когда настоящий шрифт готов. */
+  const fontsReady: Promise<unknown> = document.fonts?.ready ?? Promise.resolve();
+  fontsReady.then(run);
+  let t: number;
+  window.addEventListener('resize', () => { clearTimeout(t); t = window.setTimeout(run, 120); });
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const letters = gsap.utils.toArray<HTMLElement>('[data-letter]');
+    const rest = gsap.utils.toArray<HTMLElement>('[data-hero]');
+
+    /* Буквы сразу прячем под маску и выпускаем, когда загрузится шрифт:
+       пока они невидимы, смена шрифта не засчитывается как сдвиг макета. */
+    gsap.set(letters, { yPercent: 112 });
+    gsap.set(rest, { y: 16, opacity: 0 });
+    fontsReady.then(() => {
+      const tl = gsap.timeline({ delay: 0.1, defaults: { ease: 'expo.out' } });
+      tl.to(letters, { yPercent: 0, duration: 1.1, stagger: 0.06 })
+        .to(rest, { y: 0, opacity: 1, duration: 0.6, stagger: 0.08 }, '-=0.7');
+    });
+
+    /* Буквы расходятся при прокрутке: крайние уезжают наружу, внутренние
+       почти стоят. Слово будто раскрывается, пока уходит вверх. Это
+       единственное движение первого экрана помимо появления. */
+    if (window.matchMedia('(min-width: 700px)').matches) {
+      const spread = [-13, -4, 4, 13];
+      letters.forEach((el, i) => {
+        gsap.to(el, {
+          xPercent: spread[i] ?? 0,
+          ease: 'none',
+          scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.7 },
+        });
+      });
+    }
+  }
+</script>

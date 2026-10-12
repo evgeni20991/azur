@@ -1,0 +1,102 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Base title="Новый пароль" description="Восстановление доступа к личному кабинету" noindex>
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell narrow">
+
+      <div data-state="form">
+        <p class="label">Личный кабинет</p>
+        <h1 class="h1">Новый пароль</h1>
+        <p class="lead sub">Придумайте пароль — им вы будете входить дальше.</p>
+
+        <form class="card box" data-reset>
+          <label class="f">
+            <span>Новый пароль</span>
+            <input type="password" name="password" minlength="8" required autocomplete="new-password" />
+          </label>
+          <p class="hint">Не короче восьми символов.</p>
+          <button class="btn btn-primary press wide" type="submit">Сохранить и войти</button>
+          <p class="msg" data-msg role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div data-state="bad" hidden>
+        <h1 class="h1">Ссылка не подошла</h1>
+        <p class="lead sub">
+          Ссылка действует час и только один раз. Запросите новую на странице входа —
+          или напишите нам, поможем вручную.
+        </p>
+        <a class="btn btn-primary press" href="/account/">К входу</a>
+      </div>
+
+      <div data-state="ok" hidden>
+        <p class="label">Готово</p>
+        <h1 class="h1">Пароль изменён</h1>
+        <p class="lead sub">Вы вошли в кабинет. Старые входы на других устройствах закрыты.</p>
+        <a class="btn btn-primary press" href="/account/">Мои заказы</a>
+      </div>
+
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .wrap { padding-block: 40px var(--space-section); }
+  .narrow { max-width: 520px; }
+  .sub { margin: 14px 0 26px; }
+  .box { background: var(--color-canvas); border: 1px solid var(--color-hairline);
+         border-radius: var(--radius-card); padding: 24px 22px; display: grid; gap: 12px; }
+  .f { display: grid; gap: 5px; }
+  .f > span { font-size: 0.78rem; color: var(--color-faint); }
+  .f input { font: inherit; width: 100%; min-height: 46px; padding: 10px 14px;
+             border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+             background: var(--color-surface); color: var(--color-ink); }
+  .f input:focus { outline: 2px solid var(--color-azure); outline-offset: 1px; }
+  .hint { margin: -6px 0 4px; font-size: 0.78rem; color: var(--color-faint); }
+  .wide { justify-content: center; }
+  .msg { margin: 0; font-size: 0.86rem; color: var(--color-muted); min-height: 20px; }
+  .msg.err { color: #B03A3A; }
+</style>
+
+<script>
+  const token = new URLSearchParams(location.search).get('t') || '';
+  const show = (name: string) => {
+    ['form', 'bad', 'ok'].forEach((s) => {
+      const el = document.querySelector(`[data-state="${s}"]`) as HTMLElement | null;
+      if (el) el.hidden = s !== name;
+    });
+  };
+  // Без токена форму показывать бессмысленно: сохранять будет нечего.
+  if (!token) show('bad');
+
+  const form = document.querySelector('[data-reset]') as HTMLFormElement | null;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.querySelector('[data-msg]') as HTMLElement;
+    const btn = form.querySelector('button')!;
+    btn.disabled = true;
+    msg.className = 'msg';
+    msg.textContent = 'Сохраняем…';
+    try {
+      const fd = new FormData(form);
+      const r = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', token, password: fd.get('password') }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'Не удалось сохранить');
+      show('ok');
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = (err as Error).message;
+      btn.disabled = false;
+    }
+  });
+</script>

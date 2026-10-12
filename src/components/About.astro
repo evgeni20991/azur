@@ -1,0 +1,33 @@
+---
+import { about } from '../content/site';
+---
+<section id="about" class="section about">
+  <div class="shell about-grid">
+    <div>
+      <p class="label" data-reveal>{about.label}</p>
+      <h2 class="h1 about-title" data-reveal>{about.title}</h2>
+    </div>
+    <div class="about-text">
+      {about.paras.map((p) => <p class="lead" data-reveal>{p}</p>)}
+      <dl class="facts" data-reveal>
+        {about.facts.map((f) => (
+          <div><dt>{f.k}</dt><dd>{f.v}</dd></div>
+        ))}
+      </dl>
+    </div>
+  </div>
+</section>
+
+<style>
+  .about { background: var(--color-sand); }
+  .about-grid { display: grid; gap: 32px; }
+  .about-title { margin-top: 14px; }
+  .about-text { display: grid; gap: 16px; align-content: start; }
+  .facts { display: grid; gap: 14px; margin-top: 20px; padding-top: 22px; border-top: 1px solid var(--color-line); }
+  .facts dt { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-faint); }
+  .facts dd { margin-top: 4px; font-size: 1rem; }
+  @media (min-width: 900px) {
+    .about-grid { grid-template-columns: 1fr 1fr; gap: 70px; }
+    .facts { grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  }
+</style>

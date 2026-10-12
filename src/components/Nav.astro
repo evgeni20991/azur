@@ -1,0 +1,145 @@
+---
+import { brand, nav } from '../content/site';
+---
+<header class="nav" data-nav>
+  <div class="shell nav-in">
+    <a href="/" class="brand">{brand.name}</a>
+
+    <nav class="links" aria-label="Разделы">
+      {nav.map((l) => <a href={l.href}>{l.label}</a>)}
+    </nav>
+
+    <div class="side">
+      <a href="/account/" class="icon press" aria-label="Личный кабинет">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="10" cy="7" r="3.2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3.8 17c.6-3.2 3.1-5 6.2-5s5.6 1.8 6.2 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </a>
+      <button class="icon press cart-btn" data-cart-open aria-label="Корзина">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M3.2 4h2.1l2 9h8l2-6.4H6.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8.6" cy="16.2" r="1.3" fill="currentColor"/><circle cx="15" cy="16.2" r="1.3" fill="currentColor"/>
+        </svg>
+        <span class="badge" data-cart-count hidden>0</span>
+      </button>
+      <button class="icon press burger" data-burger aria-label="Меню" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="drawer" data-drawer hidden>
+    {nav.map((l) => <a href={l.href} data-drawer-link>{l.label}</a>)}
+    <a href="/account/" data-drawer-link>Личный кабинет</a>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: sticky; top: 0; z-index: 60;
+    background: color-mix(in oklab, var(--color-canvas) 86%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 340ms var(--ease-out-soft);
+  }
+  .nav.is-stuck { border-bottom-color: var(--color-hairline); }
+  .nav-in { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
+
+  .brand {
+    font-family: var(--font-display); font-weight: 400; font-size: 1.35rem;
+    letter-spacing: -0.03em; text-decoration: none; min-height: 44px;
+    display: flex; align-items: center;
+  }
+  .links { display: none; gap: 26px; margin-inline: auto; }
+  .links a {
+    text-decoration: none; color: var(--color-muted); font-size: 0.92rem;
+    min-height: 44px; display: flex; align-items: center;
+    transition: color var(--dur-micro) var(--ease-out-soft);
+  }
+  .links a:hover { color: var(--color-ink); }
+
+  .side { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .icon {
+    position: relative; display: grid; place-items: center;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: transparent; border: 1px solid transparent; cursor: pointer;
+    color: var(--color-ink); text-decoration: none;
+    transition: background-color var(--dur-micro) var(--ease-out-soft),
+                border-color var(--dur-micro) var(--ease-out-soft);
+  }
+  .icon:hover { background: var(--color-surface); border-color: var(--color-line); }
+
+  .badge {
+    position: absolute; top: 4px; right: 3px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--color-azure); color: var(--color-on-azure);
+    font-size: 0.66rem; font-weight: 600;
+    display: grid; place-items: center;
+  }
+  .badge[hidden] { display: none; }
+
+  .burger { display: grid; place-content: center; gap: 5px; }
+  .burger span { display: block; width: 16px; height: 1.5px; background: var(--color-ink); transition: transform 260ms var(--ease-out-soft); }
+  .burger[aria-expanded="true"] span:first-child { transform: translateY(3.2px) rotate(45deg); }
+  .burger[aria-expanded="true"] span:last-child { transform: translateY(-3.3px) rotate(-45deg); }
+
+  .drawer {
+    display: grid; overflow: hidden;
+    padding: 0 clamp(18px, 4vw, 40px) 14px;
+    border-bottom: 1px solid var(--color-hairline);
+  }
+  .drawer[hidden] { display: none; }
+  .drawer a {
+    text-decoration: none; font-size: 1.04rem; min-height: 50px;
+    display: flex; align-items: center; border-bottom: 1px solid var(--color-hairline);
+  }
+
+  @media (min-width: 900px) {
+    .links { display: flex; }
+    .burger, .drawer { display: none; }
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { count, onChange } from '../scripts/cart';
+
+  const nav = document.querySelector('[data-nav]');
+  const onScroll = () => nav?.classList.toggle('is-stuck', window.scrollY > 8);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  const badge = document.querySelector('[data-cart-count]') as HTMLElement | null;
+  const paint = () => {
+    if (!badge) return;
+    const n = count();
+    const had = !badge.hidden;
+    badge.textContent = String(n);
+    badge.hidden = n === 0;
+    // Подскок только когда значок появился, а не на каждом изменении:
+    // повторяющийся подскок быстро начинает раздражать.
+    if (n > 0 && !had) gsap.from(badge, { scale: 0, duration: 0.4, ease: 'back.out(2.4)' });
+  };
+  paint();
+  onChange(paint);
+
+  const burger = document.querySelector('[data-burger]') as HTMLButtonElement | null;
+  const drawer = document.querySelector('[data-drawer]') as HTMLElement | null;
+  let open = false;
+  const set = (next: boolean) => {
+    if (!drawer || !burger || open === next) return;
+    open = next;
+    burger.setAttribute('aria-expanded', String(next));
+    if (next) {
+      drawer.hidden = false;
+      gsap.fromTo(drawer, { height: 0, opacity: 0 }, { height: 'auto', opacity: 1, duration: 0.34, ease: 'power3.out', overwrite: true });
+    } else {
+      gsap.to(drawer, { height: 0, opacity: 0, duration: 0.24, ease: 'power2.in', overwrite: true,
+        onComplete: () => { drawer.hidden = true; drawer.style.height = ''; } });
+    }
+  };
+  burger?.addEventListener('click', () => set(!open));
+  document.querySelectorAll('[data-drawer-link]').forEach((a) => a.addEventListener('click', () => set(false)));
+</script>

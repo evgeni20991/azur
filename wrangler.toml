@@ -1,0 +1,8 @@
+name = "azur"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "azur"
+database_id = "<id из вывода wrangler d1 create azur>"

@@ -1,0 +1,355 @@
+@import 'tailwindcss';
+
+/* Шрифты со своего домена: запрос к fonts.googleapis.com отдаёт IP посетителя
+   иностранному сервису, а это трансграничная передача по 152-ФЗ.
+   Файлы вариативные — один покрывает весь диапазон насыщенности. */
+@font-face {
+  font-family: 'Unbounded'; font-style: normal; font-weight: 300 500; font-display: swap;
+  src: url('/fonts/unbounded-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Unbounded'; font-style: normal; font-weight: 300 500; font-display: swap;
+  src: url('/fonts/unbounded-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2122, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: 'Onest'; font-style: normal; font-weight: 300 600; font-display: swap;
+  src: url('/fonts/onest-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Onest'; font-style: normal; font-weight: 300 600; font-display: swap;
+  src: url('/fonts/onest-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2122, U+2191, U+2193, U+2212;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   azur — пастельная гамма: белый, бежевый, голубой, синий, тёмно-синий.
+
+   Правило, которое держит всё вместе: поверхностей много, но все они —
+   один почти-нейтральный тон с еле заметной синевой. Насыщенный синий
+   допускается ровно в одном месте — на главном действии. Всё остальное
+   цветное живёт внутри контейнеров: бейджи, подложки, теги.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Поверхности: холодный белый → бежевый → голубой. Шаг светлоты малый —
+     именно тесно расположенные значения читаются как дорого. */
+  --color-canvas:   oklch(0.988 0.004 240);   /* #FBFCFE  фон страницы */
+  --color-surface:  oklch(0.966 0.008 235);   /* #F1F4F9  секции */
+  --color-sand:     oklch(0.955 0.018 85);    /* #F4EFE6  бежевые блоки */
+  --color-mist:     oklch(0.930 0.020 235);   /* #E2E9F2  карточки товара */
+  --color-line:     oklch(0.885 0.018 235);   /* границы */
+  --color-hairline: oklch(0.930 0.012 235);   /* волосяные линии */
+
+  /* Текст: тёмно-синий вместо чёрного. Чистый чёрный на холодном белом
+     выглядит резко и «по умолчанию». */
+  --color-ink:      oklch(0.255 0.052 258);   /* #1B2540 */
+  --color-muted:    oklch(0.520 0.038 255);
+  --color-faint:    oklch(0.650 0.028 250);
+
+  /* Единственный акцент действия. */
+  --color-azure:      oklch(0.585 0.155 252);  /* #3B6FD4 */
+  --color-azure-deep: oklch(0.455 0.135 258);
+  --color-azure-wash: oklch(0.945 0.032 245);
+  --color-on-azure:   oklch(0.995 0.002 250);
+
+  /* Контейнерные цвета: только внутри бейджей и подложек, не россыпью. */
+  --color-sky:      oklch(0.855 0.065 235);
+  --color-navy:     oklch(0.320 0.075 262);
+
+  --font-display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
+  --font-body: 'Onest', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --radius-soft: 10px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+
+  /* Жёсткая шкала отступов вместо плавающей: «примерно» читается как
+     небрежность, «точно» — как дорого. */
+  --space-section: 120px;
+  --space-block: 64px;
+  --shell: 1320px;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 220ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: auto; }
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  overflow-x: hidden;
+}
+/* Место под липкую полосу покупки резервируем ТОЛЬКО там, где она есть —
+   на карточке товара. Раньше пустая полоса 74px висела внизу на всех
+   страницах: место занято, а панели нет. */
+@media (max-width: 899px) { body:has(.buybar) { padding-bottom: 74px; } }
+
+img, svg, video { display: block; max-width: 100%; }
+a { color: inherit; }
+button, input, textarea, select { font: inherit; color: inherit; }
+::selection { background: var(--color-azure); color: var(--color-on-azure); }
+:focus-visible { outline: 2px solid var(--color-azure); outline-offset: 3px; border-radius: 4px; }
+
+/* Ловушка для спама — ГЛОБАЛЬНО: заскоупленная в одном компоненте, в других
+   формах она оказывается видимой, и живой человек может её заполнить. */
+.hp { position: absolute !important; left: -9999px !important; opacity: 0 !important; }
+
+/* ---------- каркас ---------- */
+.shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: clamp(18px, 4vw, 40px); }
+.section { padding-block: var(--space-section); }
+.sec-head { margin-bottom: var(--space-block); }
+.sec-lead { margin-top: 16px; max-width: 54ch; color: var(--color-muted); }
+@media (max-width: 780px) { :root { --space-section: 84px; --space-block: 44px; } }
+
+/* ---------- типографика ---------- */
+h1, h2, h3, .h1, .h2, .h3, .display { text-wrap: balance; }
+p, .lead { text-wrap: pretty; }
+.numeral { font-variant-numeric: tabular-nums; }
+
+/* Гигантская типографика — главный приём этого магазина. Вес держим низким:
+   у крупного кегля авторитет даёт масштаб, а не жир. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(3.4rem, 15vw, 13rem);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+}
+.h1 {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(2.1rem, 5.2vw, 4rem); line-height: 1.02; letter-spacing: -0.035em;
+}
+.h2 {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(1.7rem, 3.6vw, 2.9rem); line-height: 1.06; letter-spacing: -0.03em;
+}
+.h3 { font-size: 1.02rem; font-weight: 500; line-height: 1.3; letter-spacing: -0.005em; }
+
+.lead { font-size: clamp(1rem, 1.2vw, 1.12rem); line-height: 1.62; color: var(--color-muted); }
+.label {
+  font-size: 0.7rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.18em; color: var(--color-azure);
+}
+
+/* ---------- строки корзины ----------
+   ГЛОБАЛЬНО: создаются скриптом, заскоупленные стили до них не доходят. */
+.c-row {
+  display: grid; grid-template-columns: 72px 1fr auto; gap: 14px;
+  align-items: center; padding: 14px 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.c-shot { width: 72px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--color-mist); }
+.c-name { font-size: 0.94rem; font-weight: 500; }
+.c-size { font-size: 0.78rem; color: var(--color-faint); margin-top: 2px; }
+.c-qty { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+.c-qty button {
+  width: 32px; height: 32px; border-radius: 50%; cursor: pointer; line-height: 1;
+  background: var(--color-surface); border: 1px solid var(--color-line); color: var(--color-ink);
+  transition: border-color var(--dur-micro) var(--ease-out-soft);
+}
+.c-qty button:hover { border-color: var(--color-azure); }
+.c-qty span { min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.c-sum { font-size: 0.98rem; font-weight: 500; white-space: nowrap; }
+
+/* ---------- карточки заказов ---------- ГЛОБАЛЬНО: рисуются скриптом */
+.o-card { border: 1px solid var(--color-hairline); border-radius: var(--radius-card); padding: 18px 18px 16px; background: var(--color-canvas); }
+.o-top { display: flex; align-items: start; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--color-hairline); }
+.o-id { font-weight: 500; font-size: 0.96rem; }
+.o-date { font-size: 0.82rem; color: var(--color-faint); margin-top: 2px; }
+.o-status { font-size: 0.76rem; padding: 5px 11px; border-radius: var(--radius-pill); white-space: nowrap; }
+.o-paid { background: var(--color-azure-wash); color: var(--color-azure-deep); }
+.o-pending { background: var(--color-sand); color: var(--color-muted); }
+.o-cancelled { background: oklch(0.94 0.03 25); color: oklch(0.48 0.14 25); }
+.o-lines { display: grid; gap: 7px; padding-block: 12px; }
+.o-line { display: flex; justify-content: space-between; gap: 14px; font-size: 0.9rem; color: var(--color-muted); }
+.o-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding-top: 12px; border-top: 1px solid var(--color-hairline); }
+.o-addr { font-size: 0.84rem; color: var(--color-faint); }
+.o-foot strong { font-size: 1.08rem; font-weight: 500; }
+.c-mid { min-width: 0; }
+
+/* ---------- элементы ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 50px; padding: 0 26px;
+  border-radius: var(--radius-pill);
+  font-size: 0.94rem; font-weight: 500; text-decoration: none;
+  border: 1px solid transparent; cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-out-soft),
+              border-color var(--dur-micro) var(--ease-out-soft),
+              color var(--dur-micro) var(--ease-out-soft),
+              transform var(--dur-micro) var(--ease-out-soft);
+}
+.btn-primary { background: var(--color-azure); color: var(--color-on-azure); }
+.btn-primary:hover { background: var(--color-azure-deep); }
+.btn-ghost { border-color: var(--color-line); }
+.btn-ghost:hover { border-color: var(--color-ink); background: var(--color-surface); }
+.btn[disabled] { opacity: 0.55; pointer-events: none; }
+.press { transition: transform var(--dur-micro) var(--ease-out-soft); }
+.press:active { transform: scale(0.975); }   /* отклик на нажатие, не на отпускание */
+
+.card { background: var(--color-canvas); border: 1px solid var(--color-hairline); border-radius: var(--radius-card); }
+
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 0.78rem; color: var(--color-muted); }
+.field input, .field select, .field textarea {
+  width: 100%; font: inherit;
+  font-size: 16px;                      /* меньше 16 — iOS зумит страницу при фокусе */
+  background: var(--color-canvas); color: var(--color-ink);
+  border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+  padding: 12px 14px;
+  transition: border-color 220ms var(--ease-out-soft), box-shadow 220ms var(--ease-out-soft);
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--color-azure);
+  box-shadow: 0 0 0 3px var(--color-azure-wash);
+}
+
+.msg:empty { display: none; }
+.msg { font-size: 0.9rem; padding: 12px 14px; border-radius: var(--radius-soft); }
+.msg.ok { background: var(--color-azure-wash); color: var(--color-azure-deep); }
+.msg.err { background: oklch(0.94 0.045 25); color: oklch(0.45 0.16 25); }
+
+/* Сторож: если rAF не тикает, GSAP не доиграет и страница останется пустой. */
+.motion-dead [data-reveal],
+.motion-dead [data-reveal-soft],
+.motion-dead [data-hero] {
+  opacity: 1 !important; transform: none !important; clip-path: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ── Юридические страницы ──────────────────────────────────────────────────
+   Классы лежат здесь, а не в scoped-стилях страницы: их используют три
+   разных файла, а scoped-стиль Astro действует только внутри своего. */
+.doc { max-width: 58ch; margin-top: 26px; }
+.doc h2 { font-size: 1.16rem; font-weight: 500; letter-spacing: -0.01em; margin: 34px 0 10px; }
+.doc h2:first-of-type { margin-top: 26px; }
+.doc p, .doc li { font-size: 0.94rem; line-height: 1.7; color: var(--color-muted); }
+.doc p { margin: 0 0 12px; }
+.doc ul { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
+.doc a { color: var(--color-azure); }
+.doc dl { display: grid; gap: 0; margin: 22px 0 0; }
+.doc dl > div {
+  display: grid; grid-template-columns: minmax(150px, 34%) 1fr; gap: 4px 20px;
+  padding: 12px 0; border-bottom: 1px solid var(--color-hairline);
+}
+.doc dt { font-size: 0.82rem; color: var(--color-faint); }
+.doc dd { margin: 0; font-size: 0.94rem; }
+@media (max-width: 560px) { .doc dl > div { grid-template-columns: 1fr; } }
+
+/* Незаполненный реквизит должен быть виден на странице, а не выглядеть
+   как пустое место: иначе о пропуске узнаёшь из отказа модератора. */
+.todo {
+  background: #FFF3D4; color: #7A5A12; border-radius: 5px;
+  padding: 1px 7px; font-size: 0.82rem; white-space: nowrap;
+}
+
+/* Липкая шапка высотой ~72px наезжала на заголовки при переходе по якорю
+   и при прокрутке к разделу: заголовок оказывался наполовину под ней.
+   scroll-padding сдвигает точку остановки, а не саму вёрстку. */
+html { scroll-padding-top: 88px; }
+[id] { scroll-margin-top: 88px; }
+
+/* Страница каталога открывалась почти пустым экраном: до первого товара
+   на телефоне надо было пролистать всю высоту. Отдельная страница
+   не нуждается в верхнем отступе раздела — заголовок и так первый. */
+main > .cat:first-child { padding-block-start: 22px; }
+@media (min-width: 900px) { main > .cat:first-child { padding-block-start: 40px; } }
+
+/* ── Подсказки адреса ──────────────────────────────────────────────────
+   Список создаётся скриптом, поэтому стили глобальные: scoped-правила
+   Astro на созданные элементы не действуют. */
+.sug-wrap { position: relative; }
+.sug {
+  position: absolute; z-index: 40; inset-inline: 0; top: calc(100% + 4px);
+  margin: 0; padding: 6px; list-style: none; max-height: 260px; overflow-y: auto;
+  background: var(--color-canvas); border: 1px solid var(--color-line);
+  border-radius: var(--radius-soft); box-shadow: 0 12px 32px rgba(15, 25, 45, 0.12);
+}
+.sug[hidden] { display: none; }
+.sug-i {
+  font: inherit; display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-radius: 8px; padding: 10px 12px;
+  min-height: 44px; font-size: 0.9rem; color: var(--color-ink); line-height: 1.4;
+}
+.sug-i:hover, .sug-i.on { background: var(--color-azure-wash); }
+
+/* Действия в карточке заказа. Класс глобальный: карточки рисует скрипт,
+   а scoped-стили Astro на созданные элементы не действуют. */
+.o-act { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 10px; }
+.o-act a {
+  font-size: 0.86rem; color: var(--color-azure); text-decoration: none;
+  min-height: 44px; display: inline-flex; align-items: center;
+}
+.o-act a:hover { text-decoration: underline; }
+/* Статусы, которых раньше не было в кабинете. */
+.o-status.o-checking { background: #FFF3D4; color: #7A5A12; }
+.o-status.o-sent { background: var(--color-azure-wash); color: #1B4FA8; }
+.o-status.o-done { background: #E4E8EF; color: #4A5673; }
+
+/* Ссылки, по которым действительно попадают пальцем: телефон и почта
+   в реквизитах, хлебные крошки, возврат в каталог. Ссылки внутри абзаца
+   не трогаем — растянуть их до 44px значит разорвать строку. */
+.doc dd a, .crumbs a, .back {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding-block: 10px; margin-block: -10px;
+}
+
+/* Незаполненный реквизит на людях. Жёлтая плашка кричала «недоделка»,
+   когда сайт показывают заказчику; напоминание владельцу живёт
+   в /api/health, а здесь пропуск выглядит намеренным. */
+.gap { color: var(--color-faint); font-style: italic; }
+
+/* Текст только для экранной читалки: глазами не виден, вслух произносится.
+   Нужен там, где смысл несёт оформление, — например, зачёркнутая цена:
+   без пояснения читалка объявляет две суммы подряд. */
+.sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* Галочка согласия по 152-ФЗ. Общая для всех форм сайта: цель одна — чтобы
+   квадрат галочки не сжимался рядом с длинной подписью и попадал пальцем. */
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-block: 4px 2px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.consent input[type='checkbox'] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--color-flame, var(--color-azure, #2f6bff));
+  cursor: pointer;
+}
+.consent a { color: inherit; text-underline-offset: 2px; }
+
+/* Буквы героя прячутся под маску до загрузки шрифта. Если анимации не тикают,
+   сторож в Base.astro ставит motion-dead — буквы обязаны встать на место,
+   иначе главное слово страницы останется невидимым. */
+.motion-dead [data-letter] { transform: none !important; }

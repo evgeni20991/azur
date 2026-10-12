@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { brand, seller, innOk, gap } from '../content/site';
+---
+
+<Base title="Контакты и реквизиты" description="Реквизиты продавца, контакты для связи и порядок обращений.">
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell narrow">
+      <p class="label">Информация</p>
+      <h1 class="h1">Контакты и реквизиты</h1>
+
+      <div class="doc">
+        <p>
+          Магазин {brand.name} — интернет-витрина одежды. Продавец работает
+          как самозанятый: чек по каждой покупке формируется автоматически
+          и мы присылаем ссылку на него — она появляется на странице заказа.
+        </p>
+
+        <h2>Реквизиты продавца</h2>
+        <dl>
+          <div><dt>Статус</dt><dd>{seller.status}</dd></div>
+          <div><dt>Продавец</dt><dd>{seller.fio || <span class="gap">{gap}</span>}</dd></div>
+          <div><dt>ИНН</dt><dd>{innOk ? seller.inn : <span class="gap">{gap}</span>}</dd></div>
+          <div><dt>Телефон</dt><dd>{seller.phone
+            ? <a href={`tel:${seller.phone.replace(/[^+\d]/g, '')}`}>{seller.phone}</a>
+            : <span class="gap">{gap}</span>}</dd></div>
+          <div><dt>Почта</dt><dd>{seller.email
+            ? <a href={`mailto:${seller.email}`}>{seller.email}</a>
+            : <span class="gap">{gap}</span>}</dd></div>
+          <div><dt>Отправка заказов</dt><dd>{seller.city || <span class="gap">{gap}</span>}</dd></div>
+        </dl>
+
+        <h2>Как с нами связаться</h2>
+        <p>
+          Пишите на почту или звоните в рабочее время — {brand.hours.toLowerCase()}.
+          Отвечаем в течение рабочего дня. По вопросам конкретного заказа
+          назовите его номер: он есть в письме и в личном кабинете.
+        </p>
+
+        <h2>Если что-то пошло не так</h2>
+        <p>
+          Сначала напишите нам — почти всё решается за один разговор.
+          Если договориться не вышло, у вас есть право обратиться
+          в Роспотребнадзор или в суд по месту жительства.
+        </p>
+        <p>
+          Порядок возврата товара и денег описан на странице{' '}
+          <a href="/delivery-info/">«Доставка и возврат»</a>,
+          условия покупки — в <a href="/oferta/">оферте</a>.
+        </p>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Base>

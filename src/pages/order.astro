@@ -1,0 +1,148 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+<Base title="Заказ">
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell narrow">
+      <div data-state="loading">
+        <p class="lead">Проверяем статус заказа…</p>
+      </div>
+
+      {/* У каждого состояния свой h1, и это намеренно: состояния
+          взаимоисключающие, на экране всегда одно. Сделать четыре из них
+          вторым уровнем значит оставить видимую страницу без главного
+          заголовка. */}
+      <div data-state="paid" hidden>
+        <p class="label">Оплачено</p>
+        <h1 class="h1">Спасибо за заказ</h1>
+        <p class="lead sub">Мы получили оплату и уже собираем посылку. Ссылка на чек появится на этой странице.</p>
+      </div>
+
+      <div data-state="checking" hidden>
+        <p class="label">Проверяем оплату</p>
+        <h1 class="h1">Ждём подтверждения перевода</h1>
+        <p class="lead sub">Продавец сверяет поступление и подтвердит заказ — обычно в течение часа в рабочее время. Сохраните ссылку на эту страницу: статус появится здесь.</p>
+        <a class="btn btn-ghost press" href="/catalog/">Вернуться в каталог</a>
+      </div>
+
+      <div data-state="cash" hidden>
+        <p class="label">Оплата при получении</p>
+        <h1 class="h1">Заказ принят</h1>
+        <p class="lead sub">Мы собираем посылку и позвоним по поводу доставки. Приготовьте сумму курьеру — осмотрите заказ до оплаты.</p>
+        <a class="btn btn-ghost press" href="/catalog/">Вернуться в каталог</a>
+      </div>
+
+      <div data-state="pending" hidden>
+        <p class="label">Ожидает оплаты</p>
+        <h1 class="h1">Заказ создан</h1>
+        <p class="lead sub">Платёж ещё не подтверждён. Если вы только что оплатили, обновите страницу через минуту.</p>
+        <a class="btn btn-primary press" data-continue href="#">Перейти к оплате</a>
+      </div>
+
+      <div data-state="error" hidden>
+        <h1 class="h1">Заказ не найден</h1>
+        <p class="lead sub">Проверьте ссылку или напишите нам — найдём по телефону.</p>
+        <a class="btn btn-ghost press" href="/catalog/">В каталог</a>
+      </div>
+
+      <div class="card box" data-box hidden>
+        <div class="row"><span>Номер заказа</span><b data-id>—</b></div>
+        <div class="lines" data-lines></div>
+        <div class="row"><span>Доставка</span><span data-ship>—</span></div>
+        <div class="row total"><span>Итого</span><b class="numeral" data-total>—</b></div>
+
+        <div class="meta">
+          <div><span>Куда везём</span><p data-address>—</p></div>
+          <div><span>Оплата</span><p data-method>—</p></div>
+        </div>
+
+        <!-- Фискальный чек формирует «Мой налог», а не сайт. Здесь только
+             ссылка на него: показать документ покупателю можно, выдумать нельзя. -->
+        <a class="receipt" data-receipt href="#" target="_blank" rel="noopener" hidden>
+          Чек об оплате →
+        </a>
+
+        <a class="back" href="/account/">Все мои заказы →</a>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .wrap { padding-block: 44px var(--space-section); }
+  .narrow { max-width: 640px; }
+  .sub { margin: 14px 0 24px; }
+  .box { padding: 22px 20px; display: grid; gap: 14px; margin-top: 28px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.92rem; color: var(--color-muted); }
+  .row b { color: var(--color-ink); font-weight: 500; }
+  .total { padding-top: 12px; border-top: 1px solid var(--color-hairline); }
+  .total b { font-size: 1.2rem; }
+  .lines { display: grid; gap: 10px; }
+  .back { font-size: 0.88rem; color: var(--color-azure); text-decoration: none; }
+  .meta { display: grid; gap: 14px; padding-top: 16px; border-top: 1px solid var(--color-hairline); }
+  .meta span { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-faint); }
+  .meta p { margin: 3px 0 0; font-size: 0.92rem; line-height: 1.5; }
+  .receipt {
+    display: flex; align-items: center; min-height: 44px;
+    font-size: 0.92rem; color: var(--color-azure); text-decoration: none;
+  }
+  .receipt:hover { text-decoration: underline; }
+</style>
+
+<script>
+  const id = new URLSearchParams(location.search).get('id') || '';
+  const $ = (s) => document.querySelector(s);
+  const show = (name) => {
+    ['loading', 'paid', 'checking', 'cash', 'pending', 'error'].forEach((s) => {
+      const el = document.querySelector(`[data-state="${s}"]`);
+      if (el) el.hidden = s !== name;
+    });
+  };
+  const money = (k) => `${(k / 100).toLocaleString('ru')} ₽`;
+
+  (async () => {
+    if (!id) return show('error');
+    try {
+      const res = await fetch(`/api/payment?id=${encodeURIComponent(id)}`);
+      if (!res.ok) return show('error');
+      const { order, items } = await res.json();
+
+      $('[data-id]').textContent = order.code || order.id;
+      $('[data-total]').textContent = money(order.total);
+      $('[data-ship]').textContent = order.shipping ? money(order.shipping) : 'бесплатно';
+      $('[data-address]').textContent = order.address || '—';
+      $('[data-method]').textContent =
+        order.payment_method === 'cash' ? 'Наличными курьеру при получении' : 'Переводом по СБП';
+      $('[data-lines]').innerHTML = items
+        .map((i) => `<div class="row"><span>${i.name}${i.size ? ` · ${i.size}` : ''} × ${i.qty}</span><span class="numeral">${money(i.price * i.qty)}</span></div>`)
+        .join('');
+      // Чек появляется, только когда продавец его прислал: пустая ссылка
+      // «чек об оплате», ведущая в никуда, хуже её отсутствия.
+      const rec = $('[data-receipt]');
+      if (rec && order.receipt_url) {
+        rec.href = order.receipt_url;
+        rec.hidden = false;
+      }
+      $('[data-box]').hidden = false;
+
+      if (order.status === 'paid') show('paid');
+      // Перевод по СБП: покупатель сообщил об оплате, продавец ещё не сверил.
+      else if (order.status === 'checking') show('checking');
+      // Заказ с оплатой курьеру ждёт не платежа, а доставки: показывать
+      // «ожидает оплаты» и кнопку «перейти к оплате» здесь неверно.
+      else if (order.payment_method === 'cash') show('cash');
+      else {
+        show('pending');
+        const link = $('[data-continue]');
+        if (link && order.payment_url) link.href = order.payment_url;
+        else if (link) link.hidden = true;
+      }
+    } catch {
+      show('error');
+    }
+  })();
+</script>

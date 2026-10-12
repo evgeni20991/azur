@@ -1,0 +1,60 @@
+---
+import { delivery } from '../content/site';
+---
+<section id="delivery" class="section deliv">
+  <div class="shell">
+    <div class="sec-head">
+      <p class="label" data-reveal>{delivery.label}</p>
+      <h2 class="h2 deliv-title" data-reveal>{delivery.title}</h2>
+    </div>
+    <ol class="steps">
+      {delivery.items.map((s) => (
+        <li class="step" data-reveal-soft>
+          <span class="line" data-step-line aria-hidden="true"></span>
+          <span class="n numeral">{s.n}</span>
+          <h3 class="h3 t">{s.t}</h3>
+          <p class="d">{s.d}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .deliv-title { margin-top: 12px; }
+  .steps {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; gap: 1px; background: var(--color-hairline);
+    border-block: 1px solid var(--color-hairline);
+  }
+  .step { position: relative; background: var(--color-canvas); padding: 28px 22px 30px; }
+  /* Настоящий элемент, а не псевдоэлемент: псевдоэлементы нельзя анимировать
+     из GSAP напрямую, а тянуть их через CSS-переменную — лишняя сложность. */
+  .line {
+    position: absolute; left: 0; right: 0; top: -1px; height: 2px;
+    background: var(--color-azure); transform: scaleX(0); transform-origin: left center;
+  }
+  .motion-dead .line { transform: scaleX(1); }
+  .n { font-size: 0.8rem; color: var(--color-azure); letter-spacing: 0.1em; }
+  /* Одна высота под заголовок: иначе описание в одной колонке начинается
+     ниже соседних и ряд читается как съехавший. */
+  .t { margin: 10px 0 8px; min-height: 2.6em; display: flex; align-items: flex-start; }
+  .d { font-size: 0.92rem; color: var(--color-muted); }
+  @media (min-width: 700px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1080px) { .steps { grid-template-columns: repeat(4, 1fr); } }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const lines = gsap.utils.toArray('[data-step-line]');
+    if (lines.length) {
+      ScrollTrigger.create({
+        trigger: '.steps', start: 'top 82%', once: true,
+        onEnter: () => gsap.to(lines, { scaleX: 1, duration: 0.75, stagger: 0.1, ease: 'expo.out' }),
+      });
+    }
+  }
+</script>

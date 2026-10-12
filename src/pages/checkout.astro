@@ -1,0 +1,340 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { delivery } from '../content/site';
+---
+<Base title="Оформление заказа">
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell co">
+      <div class="left">
+        <h1 class="h1">Оформление</h1>
+        <p class="lead sub">Заполните данные — дальше подтвердим заказ и покажем, как оплатить.</p>
+
+        <!-- Гостю предлагаем войти: иначе заказ не попадёт в его историю,
+             и второй раз он снова введёт всё вручную. -->
+        <p class="signin" data-signin hidden>
+          Уже покупали у нас? <a href="/account/">Войдите</a> — адрес и телефон подставятся сами,
+          а заказ появится в вашей истории.
+        </p>
+        <p class="signed" data-signed hidden></p>
+
+        <form class="form card" data-checkout novalidate>
+          <div class="row2">
+            <label class="field"><span>Имя и фамилия</span><input name="name" type="text" autocomplete="name" required /></label>
+            <label class="field"><span>Телефон</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required /></label>
+          </div>
+          <label class="field"><span>Почта — для связи по заказу</span><input name="email" type="email" inputmode="email" autocomplete="email" required /></label>
+          <label class="field"><span>Адрес доставки</span><input name="address" type="text" autocomplete="street-address" placeholder="Город, улица, дом, квартира" required /></label>
+          <!-- Карта грузится только по нажатию: её скрипт весит около трёхсот
+               килобайт, и тянуть его на каждого покупателя нельзя. -->
+          <button type="button" class="mapbtn" data-map-btn hidden>Показать на карте</button>
+          <div class="mapbox" data-map hidden></div>
+
+          <!-- Пакет за 10 ₽ предлагаем здесь, а не только в каталоге:
+               за такой мелочью отдельно не идут, а в момент оформления
+               это одно касание. -->
+          <label class="addon">
+            <input type="checkbox" name="bag" value="1" />
+            <img src="/img/p9.webp" alt="Фирменный пакет из крафт-бумаги" width="900" height="1200" loading="lazy" />
+            <span>
+              <b>Добавить фирменный пакет</b>
+              <small>Плотная бумага, верёвочные ручки. Положим в него заказ.</small>
+            </span>
+            <em class="addon-price numeral">10 ₽</em>
+          </label>
+
+          <fieldset class="pay-methods">
+            <legend>Чем платить</legend>
+            <div class="pm">
+              <label class="pm-opt">
+                <input type="radio" name="method" value="sbp" checked />
+                <span>
+                  <b>СБП</b>
+                  <small>перевод по номеру телефона, без комиссии · подтверждаем вручную</small>
+                </span>
+              </label>
+              <label class="pm-opt">
+                <input type="radio" name="method" value="cash" />
+                <span>
+                  <b>Наличными курьеру</b>
+                  <small>оплата при получении, после осмотра заказа</small>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true" />
+
+          {/* Активная галочка вместо фразы «нажимая кнопку»: требование 152-ФЗ.
+              Форма проверяется через reportValidity(), поэтому required реально
+              не даёт отправить заказ без согласия. */}
+          <label class="consent">
+            <input type="checkbox" name="consent" required />
+            <span>Я согласен на обработку персональных данных и принимаю <a href="/privacy/" target="_blank" rel="noopener">политику</a></span>
+          </label>
+
+          <button type="submit" class="btn btn-primary press pay" data-send="Перейти к оплате" data-sending="Создаём заказ…">
+            Перейти к оплате
+          </button>
+          <!-- Гарантии стоят рядом с кнопкой оплаты: именно здесь человек
+               решает, доверить ли незнакомому магазину тринадцать тысяч. -->
+          <ul class="guards" data-guards-online>
+            <li>Перевод идёт напрямую продавцу — без комиссии и посредников</li>
+            <li>Доставка бесплатная, при любой сумме заказа</li>
+              <li>Не подошло — обмен или возврат 30 дней, деньги на карту</li>
+            <li>Если заказ не соберётся, вернём всю сумму в течение трёх дней</li>
+          </ul>
+          <ul class="guards" data-guards-cash hidden>
+            <li>Осмотрите заказ при курьере — платите только за то, что подошло</li>
+            <li>Ничего не подошло — вернёте курьеру, платить не нужно</li>
+            <li>Курьер привезёт чек вместе с заказом</li>
+          </ul>
+          <p class="note">Оформляя заказ, вы принимаете условия <a href="/oferta/">оферты</a>.</p>
+          <p class="msg" data-msg role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <aside class="right card">
+        <h2 class="h3">Ваш заказ</h2>
+        <div class="lines" data-lines></div>
+        <div class="sums">
+          <div><span>Товары</span><span class="numeral" data-sub>—</span></div>
+          <div><span>Доставка</span><span class="numeral" data-ship>—</span></div>
+          <div class="total"><span>Итого</span><strong class="numeral" data-total>—</strong></div>
+        </div>
+        <p class="free" data-free></p>
+        <a href="/catalog/" class="back">← Вернуться в каталог</a>
+      </aside>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .wrap { padding-block: 34px var(--space-section); }
+  .co { display: grid; gap: 30px; align-items: start; }
+  .sub { margin: 12px 0 26px; }
+  .form { padding: 24px 22px; display: grid; gap: 16px; }
+  .row2 { display: grid; gap: 16px; }
+  .pay { justify-content: center; min-height: 54px; margin-top: 4px; }
+  .note { font-size: 0.78rem; color: var(--color-faint); line-height: 1.5; }
+  .signin, .signed {
+    font-size: 0.88rem; color: var(--color-muted);
+    background: var(--color-azure-wash); border-radius: var(--radius-soft);
+    padding: 11px 14px; margin-bottom: 20px; line-height: 1.5;
+  }
+  .signin[hidden], .signed[hidden] { display: none; }
+  .signin a { color: var(--color-azure-deep); }
+  .addon {
+    display: grid; grid-template-columns: 52px 1fr auto; gap: 12px;
+    align-items: center; padding: 10px 14px; cursor: pointer;
+    border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+    background: var(--color-canvas);
+    transition: border-color var(--dur-micro) var(--ease-out-soft), background-color var(--dur-micro) var(--ease-out-soft);
+  }
+  .addon:has(input:checked) { border-color: var(--color-azure); background: var(--color-azure-wash); }
+  .addon input { width: 18px; height: 18px; accent-color: var(--color-azure); cursor: pointer; grid-column: 1; justify-self: start; }
+  .addon img { width: 40px; height: 53px; object-fit: cover; border-radius: 6px; grid-column: 1; justify-self: end; display: none; }
+  .addon span { display: grid; gap: 2px; }
+  .addon b { font-weight: 500; font-size: 0.92rem; }
+  .addon small { font-size: 0.78rem; color: var(--color-faint); }
+  .addon-price { font-style: normal; font-weight: 500; white-space: nowrap; }
+
+  .pay-methods { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .pay-methods legend { font-size: 0.78rem; color: var(--color-muted); padding: 0 0 4px; }
+  .pm { display: grid; gap: 8px; }
+  .pm-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .pm-opt span {
+    display: grid; gap: 2px; min-height: 58px; padding: 11px 15px;
+    align-content: center; cursor: pointer;
+    border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+    background: var(--color-canvas);
+    transition: border-color var(--dur-micro) var(--ease-out-soft), background-color var(--dur-micro) var(--ease-out-soft);
+  }
+  .pm-opt b { font-weight: 500; font-size: 0.94rem; }
+  .pm-opt small { font-size: 0.78rem; color: var(--color-faint); }
+  .pm-opt input:checked + span { border-color: var(--color-azure); background: var(--color-azure-wash); }
+  .pm-opt input:checked + span small { color: var(--color-muted); }
+  .pm-opt input:focus-visible + span { outline: 2px solid var(--color-azure); outline-offset: 2px; }
+
+  .guards { list-style: none; padding: 0; margin: 2px 0 0; display: grid; gap: 7px; }
+  /* display:grid перебивает атрибут hidden — без этой строки скрытый
+     список гарантий остаётся на виду. */
+  .guards[hidden] { display: none; }
+  .guards li { position: relative; padding-left: 22px; font-size: 0.82rem; color: var(--color-muted); }
+  .guards li::before {
+    content: ''; position: absolute; left: 0; top: 6px;
+    width: 12px; height: 7px; border-left: 2px solid var(--color-azure);
+    border-bottom: 2px solid var(--color-azure); transform: rotate(-45deg);
+  }
+
+  .right { padding: 22px 20px; display: grid; gap: 16px; position: sticky; top: 84px; }
+  .lines { display: grid; gap: 12px; }
+  .sums { display: grid; gap: 6px; padding-top: 14px; border-top: 1px solid var(--color-hairline); }
+  .sums > div { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.9rem; color: var(--color-muted); }
+  .total { color: var(--color-ink) !important; }
+  .total strong { font-size: 1.25rem; font-weight: 500; }
+  .free { font-size: 0.82rem; color: var(--color-azure-deep); background: var(--color-azure-wash); padding: 9px 12px; border-radius: var(--radius-soft); }
+  .free:empty { display: none; }
+  .back { font-size: 0.88rem; color: var(--color-muted); text-decoration: none; }
+  .back:hover { color: var(--color-azure); }
+
+  @media (min-width: 620px) { .row2 { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 940px) { .co { grid-template-columns: 1.15fr 0.85fr; gap: 50px; } }
+  .mapbtn { font: inherit; font-size: 0.84rem; color: var(--color-azure); background: none;
+             border: 0; cursor: pointer; padding: 0; min-height: 44px; justify-self: start; margin-top: -6px; }
+  .mapbtn:hover { text-decoration: underline; }
+  .mapbtn[hidden] { display: none; }
+  .mapbox { height: 260px; border-radius: var(--radius-soft); overflow: hidden;
+            border: 1px solid var(--color-hairline); }
+  .mapbox[hidden] { display: none; }
+</style>
+
+<script>
+  import { detailed, subtotal, shippingFor, FREE_FROM, clear } from '../scripts/cart';
+
+  const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
+  const money = (n: number) => `${n.toLocaleString('ru')} ₽`;
+
+  function paintSummary() {
+    const lines = detailed();
+    const box = $<HTMLElement>('[data-lines]');
+    if (box) {
+      box.innerHTML = lines.length
+        ? lines.map((l) => `
+            <div class="c-row">
+              <img class="c-shot" src="${l.photo}" alt="${l.name}" width="72" height="96" loading="lazy" />
+              <div class="c-mid"><p class="c-name">${l.name}</p>${l.size ? `<p class="c-size">размер ${l.size} · ${l.qty} шт</p>` : `<p class="c-size">${l.qty} шт</p>`}</div>
+              <p class="c-sum numeral">${money(l.sum)}</p>
+            </div>`).join('')
+        : '<p class="c-size">Корзина пуста</p>';
+    }
+    // Пакет — часть суммы, поэтому и доставка, и подсказка про порог
+    // считаются вместе с ним. Иначе цифры на экране расходятся на десять рублей.
+    const bagOn = (document.querySelector('[name="bag"]') as HTMLInputElement | null)?.checked;
+    const sum = subtotal() + (bagOn ? 10 : 0);
+    const ship = shippingFor(sum);
+    $('[data-sub]')!.textContent = money(sum);
+    $('[data-ship]')!.textContent = sum === 0 ? '—' : ship === 0 ? 'бесплатно' : money(ship);
+    $('[data-total]')!.textContent = money(sum + ship);
+    const free = $<HTMLElement>('[data-free]')!;
+    free.textContent = sum === 0 || ship === 0 ? '' : `Добавьте ещё на ${(FREE_FROM - sum).toLocaleString('ru')} ₽ — и доставка бесплатно`;
+  }
+  paintSummary();
+
+  /* Итог должен меняться сразу при отметке пакета: цифра, которая обновится
+     только после нажатия «оплатить», выглядит как обман. */
+  document.querySelector('[name="bag"]')?.addEventListener('change', paintSummary);
+
+  /* Подставляем данные из профиля. Человек, который уже покупал, не должен
+     вводить имя, телефон и адрес заново — ради этого кабинет и нужен. */
+  (async () => {
+    try {
+      const res = await fetch('/api/auth');
+      const { user } = await res.json();
+      const signin = $<HTMLElement>('[data-signin]')!;
+      const signed = $<HTMLElement>('[data-signed]')!;
+      if (!user) { signin.hidden = false; return; }
+      signed.textContent = `Вы вошли как ${user.email}. Заказ появится в истории.`;
+      signed.hidden = false;
+      const set = (n: string, v: string) => {
+        const el = form?.querySelector(`[name="${n}"]`) as HTMLInputElement | null;
+        if (el && !el.value && v) el.value = v;
+      };
+      set('name', user.name); set('phone', user.phone);
+      set('email', user.email); set('address', user.address);
+    } catch { /* не критично: форма просто останется пустой */ }
+  })();
+
+  const form = $<HTMLFormElement>('[data-checkout]');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $<HTMLElement>('[data-msg]')!;
+    const btn = form.querySelector('.pay') as HTMLButtonElement;
+    msg.className = 'msg';
+    msg.textContent = '';
+
+    const items = detailed().map((l) => ({ id: l.id, size: l.size, qty: l.qty }));
+    // Пакет — обычная позиция заказа: сервер посчитает его по своей цене,
+    // как и всё остальное.
+    const bag = form.querySelector('[name="bag"]') as HTMLInputElement | null;
+    if (bag?.checked && !items.some((i) => i.id === 'p9')) {
+      items.push({ id: 'p9', size: '', qty: 1 });   // размер один — сервер подставит
+    }
+    if (!items.length) {
+      msg.classList.add('err');
+      msg.textContent = 'Корзина пуста — добавьте что-нибудь из каталога.';
+      return;
+    }
+    if (!form.reportValidity()) return;
+
+    btn.disabled = true;
+    btn.textContent = btn.dataset.sending!;
+    const fd = new FormData(form);
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Отправляем ТОЛЬКО id, размер и количество. Цену и итог считает
+        // сервер по своему каталогу — иначе сумму меняют в браузере.
+        body: JSON.stringify({
+          items,
+          name: fd.get('name'), phone: fd.get('phone'),
+          email: fd.get('email'), address: fd.get('address'),
+          method: fd.get('method'),
+          website: fd.get('website'),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Не удалось создать заказ');
+
+      // Корзину чистим только после успешного создания заказа: очистить
+      // раньше — значит потерять её, если платёж не создался.
+      clear();
+      window.location.href = data.paymentUrl;
+    } catch (err) {
+      msg.classList.add('err');
+      msg.textContent = (err as Error).message || 'Что-то пошло не так. Попробуйте ещё раз.';
+      btn.disabled = false;
+      btn.textContent = btn.dataset.send!;
+    }
+  });
+  /* Подпись кнопки и гарантии зависят от способа оплаты: «перейти к оплате»
+     на заказе с оплатой курьеру обещает то, чего не произойдёт.
+     Кнопку берём здесь заново: та, что в обработчике отправки, объявлена
+     внутри него и снаружи не видна. */
+  {
+    const online = $<HTMLElement>('[data-guards-online]');
+    const cashG = $<HTMLElement>('[data-guards-cash]');
+    const payBtn = form?.querySelector('.pay') as HTMLButtonElement | null;
+    const sync = () => {
+      const picked = form?.querySelector('input[name="method"]:checked') as HTMLInputElement | null;
+      const cash = picked?.value === 'cash';
+      if (payBtn) {
+        payBtn.dataset.send = cash ? 'Оформить заказ' : 'Перейти к оплате';
+        if (!payBtn.disabled) payBtn.textContent = payBtn.dataset.send;
+      }
+      if (online) online.hidden = cash;
+      if (cashG) cashG.hidden = !cash;
+    };
+    form?.querySelectorAll('input[name="method"]').forEach((r) => r.addEventListener('change', sync));
+    sync();
+  }
+
+  /* Подсказки адреса и карта. Без ключей ничего не подключается,
+     и поле остаётся обычным — оформление заказа не ломается. */
+  {
+    const addr = form?.querySelector('input[name="address"]') as HTMLInputElement | null;
+    const mapBtn = document.querySelector('[data-map-btn]') as HTMLButtonElement | null;
+    const mapBox = document.querySelector('[data-map]') as HTMLElement | null;
+    if (addr) {
+      import('../scripts/address').then((m) => {
+        m.initAddress(addr);
+        if (mapBtn && mapBox) { mapBtn.hidden = false; m.initMapButton(addr, mapBox, mapBtn); }
+      });
+    }
+  }
+</script>

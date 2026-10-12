@@ -1,0 +1,73 @@
+---
+import { brand, nav, legalPages, seller, sellerFilled, sbpReady, innOk, gap } from '../content/site';
+const year = new Date().getFullYear();
+---
+<footer class="foot">
+  <div class="shell">
+    <div class="top">
+      <a href="/" class="mark">{brand.name}</a>
+      <nav class="links" aria-label="Разделы в подвале">
+        {nav.map((l) => <a href={l.href}>{l.label}</a>)}
+        <a href="/account/">Личный кабинет</a>
+          {legalPages.map((l) => <a href={l.href}>{l.label}</a>)}
+      </nav>
+    </div>
+    <div class="grid">
+      <div><p class="k">Магазин</p><p>{brand.address}</p><p class="sub">{brand.metro}</p><p class="sub">{brand.hours}</p></div>
+      <div>
+          <p class="k">Связь</p>
+          <p>{seller.phone
+            ? <a href={`tel:${seller.phone.replace(/[^+\d]/g, '')}`}>{seller.phone}</a>
+            : <span class="gap">{gap}</span>}</p>
+          <p class="sub">{seller.email || <span class="gap">{gap}</span>}</p>
+        </div>
+    </div>
+    <div class="legal">
+      {/* Предупреждение снимается само, когда реквизиты станут настоящими.
+          Пока продавец не назван, сайт обязан говорить об этом сам. */}
+      {!sellerFilled && (
+        <p class="demo">
+            Витрина учебная: товары и цены вымышлены.
+            {sbpReady
+              ? ' Оплата настоящая — перевод по СБП уходит продавцу на счёт.'
+              : ' Оплата настоящих денег не списывает.'}
+          </p>
+      )}
+      <p>
+        {seller.fio || <span class="gap">{gap}</span>}
+        {' · '}{seller.status}
+        {' · ИНН '}{innOk ? seller.inn : <span class="gap">{gap}</span>}
+      </p>
+      <p>© {year} {brand.name}. Условия покупки — в <a href="/oferta/">публичной оферте</a>.</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .foot { padding-block: 56px 40px; border-top: 1px solid var(--color-line); background: var(--color-surface); }
+  .top { display: flex; flex-wrap: wrap; gap: 16px 30px; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 1px solid var(--color-hairline); }
+  .mark { font-family: var(--font-display); font-size: 1.3rem; letter-spacing: -0.03em; text-decoration: none; min-height: 44px; display: flex; align-items: center; }
+  .links { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+  /* 44px по высоте: ссылки подвала промахиваются на телефоне чаще всего. */
+  .links a { min-height: 44px; display: flex; align-items: center; text-decoration: none; color: var(--color-muted); font-size: 0.92rem; }
+  .links a:hover { color: var(--color-ink); }
+  .grid { display: grid; gap: 22px; margin-top: 24px; }
+  .k { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-faint); margin-bottom: 6px; }
+  .grid a { text-decoration: none; border-bottom: 1px solid var(--color-line); }
+  .grid a:hover { border-color: var(--color-azure); }
+  .sub { font-size: 0.88rem; color: var(--color-muted); margin-top: 3px; }
+  .legal { margin-top: 28px; display: grid; gap: 5px; }
+  .legal p { font-size: 0.78rem; color: var(--color-faint); line-height: 1.5; }
+  /* Пометка «тестовый» заметная, но не кричащая: она не должна портить
+     впечатление, только не давать принять сайт за настоящий магазин. */
+  .demo { margin-bottom: 8px; padding: 9px 12px; border: 1px dashed var(--color-line); border-radius: var(--radius-soft); color: var(--color-muted) !important; max-width: 76ch; }
+  @media (min-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 40px; max-width: 640px; } }
+  /* Телефон и ссылки в подвале были 16–22 пикселя высотой: пальцем в метро
+     в такую цель не попасть, а телефон — единственный способ позвонить.
+     Растягиваем до 44px, не меняя вида: отступ съедается отрицательным
+     полем, поэтому строки не разъезжаются. */
+  .grid a, .legal a {
+    display: inline-flex; align-items: center; min-height: 44px;
+    padding-block: 11px; margin-block: -11px;
+  }
+</style>

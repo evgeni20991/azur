@@ -1,0 +1,213 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { sbpTransfer, gap } from '../content/site';
+
+// Библиотека QR убрана: она тянет модули Node, которых в воркере нет,
+// а сам QR отменён — банк выдаёт его только через приём платежей.
+// Если понадобится, картинку кладём файлом в /public и указываем в qrImage.
+const qrSvg: string | null = null;
+---
+
+<Base title="Оплата заказа">
+  <Nav />
+  <main id="main" class="wrap">
+    <div class="shell narrow">
+
+      <div data-state="pay">
+        <p class="label">Оплата</p>
+        <h1 class="h1">Переведите по СБП</h1>
+        <p class="lead sub">
+          Перевод идёт напрямую продавцу, без комиссии. Оплату подтверждаем
+          вручную — обычно в течение часа в рабочее время.
+        </p>
+
+        <div class="card box">
+          <div class="amount">
+            <span>К оплате</span>
+            <b class="numeral" data-total>—</b>
+          </div>
+          <button class="copy" data-copy-total type="button">Скопировать сумму</button>
+
+          {(qrSvg || sbpTransfer.qrImage) && (
+            <div class="qr">
+              {qrSvg
+                ? <div class="qr-img" set:html={qrSvg} />
+                : <img class="qr-img" src={sbpTransfer.qrImage} alt="QR-код для перевода по СБП" width="190" height="190" />}
+              <p class="qr-note">Наведите камеру телефона или откройте это в приложении банка</p>
+              {sbpTransfer.qrLink && (
+                <a class="qr-link" href={sbpTransfer.qrLink}>Открыть в приложении банка</a>
+              )}
+            </div>
+          )}
+
+          <dl class="req">
+            <div>
+              <dt>Номер телефона</dt>
+              <dd>
+                {sbpTransfer.phone
+                  ? <button class="val" data-copy={sbpTransfer.phone} type="button">{sbpTransfer.phone}</button>
+                  : <span class="gap">{gap}</span>}
+              </dd>
+            </div>
+            <div>
+              <dt>Банк получателя</dt>
+              <dd>{sbpTransfer.bank || <span class="gap">{gap}</span>}</dd>
+            </div>
+            {sbpTransfer.holder && (
+              <div><dt>Получатель</dt><dd>{sbpTransfer.holder}</dd></div>
+            )}
+            <div>
+              <dt>В сообщении к переводу</dt>
+              <dd><button class="val" data-copy-id type="button">—</button></dd>
+            </div>
+          </dl>
+
+          <p class="warn">
+            Обязательно укажите номер заказа в сообщении к переводу — по нему
+            мы найдём вашу оплату.
+          </p>
+
+          <button class="btn btn-primary press go" data-claim>Я оплатил</button>
+          <p class="msg" data-msg role="status" aria-live="polite"></p>
+          <a class="back" href="/catalog/">← Вернуться в каталог</a>
+        </div>
+      </div>
+
+      <div data-state="checking" hidden>
+        <p class="label">Проверяем</p>
+        <h1 class="h1">Спасибо, ждём подтверждения</h1>
+        <p class="lead sub">
+          Продавец сверяет поступление и подтвердит заказ — обычно в течение
+          часа в рабочее время. Сохраните ссылку на эту страницу — статус появится здесь.
+          Эту страницу можно закрыть.
+        </p>
+        <div class="card box">
+          <div class="row"><span>Заказ</span><b class="numeral" data-order-id2>—</b></div>
+          <a class="btn btn-ghost press" href="/account/">Мои заказы</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .wrap { padding-block: 40px var(--space-section); }
+  .narrow { max-width: 620px; }
+  .sub { margin: 14px 0 26px; }
+  .box { padding: 24px 22px; display: grid; gap: 14px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.94rem; color: var(--color-muted); }
+  .row b { color: var(--color-ink); font-size: 1.1rem; font-weight: 500; }
+
+  .amount { display: flex; justify-content: space-between; align-items: baseline; }
+  .amount span { font-size: 0.94rem; color: var(--color-muted); }
+  .amount b { font-size: 1.9rem; font-weight: 500; letter-spacing: -0.02em; }
+
+  .copy, .val {
+    font: inherit; color: var(--color-azure); background: none; border: 0;
+    padding: 0; cursor: pointer; text-align: left; min-height: 24px;
+  }
+  .copy { font-size: 0.84rem; justify-self: start; margin-top: -8px; }
+  .copy:hover, .val:hover { text-decoration: underline; }
+
+  .qr { display: grid; justify-items: center; gap: 10px; padding: 18px 0 6px; }
+  .qr-img { width: 190px; height: 190px; }
+  .qr-img :global(svg) { width: 100%; height: 100%; display: block; }
+  .qr-note { font-size: 0.8rem; color: var(--color-faint); text-align: center; max-width: 34ch; margin: 0; }
+  /* На своём телефоне камеру на свой же экран не наведёшь — нужна ссылка. */
+  .qr-link { font-size: 0.86rem; color: var(--color-azure); min-height: 44px; display: flex; align-items: center; }
+
+  .req { display: grid; gap: 0; margin: 4px 0 0; }
+  .req > div {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    padding: 11px 0; border-bottom: 1px solid var(--color-hairline);
+  }
+  .req dt { font-size: 0.84rem; color: var(--color-faint); }
+  .req dd { margin: 0; font-size: 0.94rem; text-align: right; }
+
+  .warn {
+    margin: 6px 0 0; padding: 12px 14px; border-radius: var(--radius-soft);
+    background: var(--color-azure-wash); font-size: 0.84rem; line-height: 1.55; color: var(--color-muted);
+  }
+  .go { justify-content: center; min-height: 54px; }
+  .back { font-size: 0.86rem; color: var(--color-muted); text-decoration: none; }
+  .back:hover { color: var(--color-azure); }
+</style>
+
+<script>
+  const id = new URLSearchParams(location.search).get('id') || '';
+  const $ = (s: string) => document.querySelector(s) as HTMLElement | null;
+  const money = (k: number) => `${(k / 100).toLocaleString('ru')} ₽`;
+
+  const show = (name: string) => {
+    ['pay', 'checking'].forEach((s) => {
+      const el = document.querySelector(`[data-state="${s}"]`) as HTMLElement | null;
+      if (el) el.hidden = s !== name;
+    });
+  };
+
+  let totalKopecks = 0;
+
+  async function load() {
+    if (!id) return;
+    const res = await fetch(`/api/payment?id=${encodeURIComponent(id)}`);
+    if (!res.ok) return;
+    const { order } = await res.json();
+    totalKopecks = order.total;
+    const t = $('[data-total]');
+    if (t) t.textContent = money(order.total);
+    // В сообщении к переводу — короткий номер: длинный никто не наберёт.
+    document.querySelectorAll('[data-copy-id], [data-order-id2]').forEach((el) => {
+      el.textContent = order.code || order.id;
+    });
+    if (order.status === 'paid') location.href = `/order/?id=${id}`;
+    else if (order.status === 'checking') show('checking');
+  }
+  load();
+
+  /* Копирование: набирать сумму и номер заказа руками в банковском
+     приложении — верный способ ошибиться на цифру. */
+  async function copy(text: string, btn: HTMLElement) {
+    const was = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Скопировано';
+    } catch {
+      btn.textContent = 'Скопируйте вручную';
+    }
+    setTimeout(() => { btn.textContent = was; }, 1600);
+  }
+
+  $('[data-copy-total]')?.addEventListener('click', (e) => {
+    copy((totalKopecks / 100).toFixed(2).replace('.00', ''), e.currentTarget as HTMLElement);
+  });
+  document.querySelectorAll('[data-copy]').forEach((b) =>
+    b.addEventListener('click', (e) => {
+      const el = e.currentTarget as HTMLElement;
+      copy(el.dataset.copy || '', el);
+    }),
+  );
+  $('[data-copy-id]')?.addEventListener('click', (e) => {
+    const el = e.currentTarget as HTMLElement;
+    copy(el.textContent || '', el);
+  });
+
+  $('[data-claim]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const msg = $('[data-msg]');
+    btn.disabled = true;
+    btn.textContent = 'Сообщаем продавцу…';
+    try {
+      const res = await fetch(`/api/payment?claim=1&id=${encodeURIComponent(id)}`, { method: 'POST' });
+      if (!res.ok) throw new Error();
+      show('checking');
+    } catch {
+      if (msg) { msg.className = 'msg err'; msg.textContent = 'Не удалось отправить. Попробуйте ещё раз.'; }
+      btn.disabled = false;
+      btn.textContent = 'Я оплатил';
+    }
+  });
+</script>

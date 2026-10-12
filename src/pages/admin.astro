@@ -1,0 +1,532 @@
+---
+import Base from '../layouts/Base.astro';
+import { catalog } from '../content/site';
+/*
+  Панель владельца. Здесь он делает то, ради чего иначе звонил бы
+  разработчику: меняет цены и остатки, добавляет товары, ведёт заказы.
+
+  Страница отдаётся всем — закрыт не адрес, а данные: без сессии
+  любой запрос к /api/admin возвращает 401. Прятать адрес бессмысленно,
+  его всё равно найдут; смысл в том, чтобы за ним ничего не отдавалось.
+*/
+const cats = catalog.categories.filter((c) => c !== 'Всё');
+---
+
+<Base title="Панель управления" description="Служебная страница" noindex>
+  <main id="main" class="adm">
+
+    <!-- ── вход ─────────────────────────────────────────────────────── -->
+    <section class="gate" data-view="login">
+      <form class="card box" data-login>
+        <h1 class="h2">Панель управления</h1>
+        <p class="sub">Магазин azur</p>
+        <label class="f">
+          <span>Пароль</span>
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn-primary press wide" type="submit">Войти</button>
+        <p class="msg" data-login-msg role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <!-- ── рабочая часть ────────────────────────────────────────────── -->
+    <section class="work" data-view="work" hidden>
+      <header class="top">
+        <div>
+          <p class="label">Панель управления</p>
+          <h1 class="h2">azur</h1>
+        </div>
+        <div class="top-act">
+          <a class="lnk" href="/" target="_blank" rel="noopener">Открыть сайт ↗</a>
+          <button class="lnk" data-logout type="button">Выйти</button>
+        </div>
+      </header>
+
+      <div class="stats" data-stats></div>
+      <div class="low" data-low hidden></div>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab is-on" data-tab="orders" role="tab" aria-selected="true">Заказы</button>
+        <button class="tab" data-tab="products" role="tab" aria-selected="false">Товары</button>
+      </nav>
+
+      <div data-pane="orders">
+        <div class="filters" data-filters></div>
+        <div class="list" data-orders>Загружаем…</div>
+      </div>
+
+      <div data-pane="products" hidden>
+        <button class="btn btn-primary press add" data-new type="button">+ Добавить товар</button>
+        <div class="list" data-products>Загружаем…</div>
+      </div>
+    </section>
+
+    <!-- ── карточка товара ──────────────────────────────────────────── -->
+    <div class="sheet" data-sheet hidden>
+      <div class="sheet-bg" data-close></div>
+      <form class="sheet-card" data-form>
+        <header class="sheet-head">
+          <h2 class="h3" data-form-title>Товар</h2>
+          <button class="x" type="button" data-close aria-label="Закрыть">✕</button>
+        </header>
+
+        <div class="grid2">
+          <label class="f"><span>Артикул</span><input name="id" required placeholder="p10" /></label>
+          <label class="f"><span>Название</span><input name="name" required placeholder="Свитер Wool" /></label>
+          <label class="f"><span>Цена, ₽</span><input name="price" type="number" min="0" required /></label>
+          <label class="f"><span>Старая цена, ₽</span><input name="oldPrice" type="number" min="0" placeholder="пусто — без скидки" /></label>
+          <label class="f"><span>Раздел</span>
+            <select name="category">{cats.map((c) => <option value={c}>{c}</option>)}</select>
+          </label>
+          <label class="f"><span>Цвет</span><input name="colour" placeholder="голубой" /></label>
+        </div>
+
+        <label class="f"><span>Состав</span><input name="composition" placeholder="100% хлопок, 220 г/м²" /></label>
+        <label class="f"><span>Описание</span><textarea name="text" rows="2" placeholder="Одно-два предложения о вещи"></textarea></label>
+        <label class="f"><span>Фото</span><input name="photo" placeholder="/img/p10.webp" /></label>
+
+        <fieldset class="sizes">
+          <legend>Размеры и остатки</legend>
+          <div data-sizes></div>
+          <button class="lnk" type="button" data-add-size>+ размер</button>
+        </fieldset>
+
+        <label class="chk"><input type="checkbox" name="hit" /><span>Метка «часто берут»</span></label>
+        <p class="hint">Метку стоит давать одному товару: на трети ассортимента она перестаёт работать.</p>
+
+        <div class="sheet-act">
+          <button class="btn btn-primary press" type="submit">Сохранить</button>
+          <button class="btn btn-ghost press" type="button" data-close>Отмена</button>
+        </div>
+        <p class="msg" data-form-msg role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </main>
+</Base>
+
+<style>
+  /* Стили того, что есть в шаблоне. Astro помечает их своим атрибутом,
+     и на элементы, созданные скриптом, они не подействуют — поэтому всё,
+     что рисует скрипт, вынесено ниже в глобальный блок. */
+  .adm { max-width: 1080px; margin-inline: auto; padding: 24px clamp(14px, 4vw, 32px) 80px; }
+
+  .gate { min-height: 70vh; display: grid; place-items: center; }
+  .gate .box { width: 100%; max-width: 360px; }
+  .box { background: var(--color-canvas); border: 1px solid var(--color-hairline);
+         border-radius: var(--radius-card); padding: 24px 22px; display: grid; gap: 14px; }
+  .sub { margin: -8px 0 4px; font-size: 0.88rem; color: var(--color-muted); }
+
+  .f { display: grid; gap: 5px; }
+  .f > span { font-size: 0.78rem; color: var(--color-faint); }
+  .f input, .f select, .f textarea {
+    font: inherit; width: 100%; min-height: 44px; padding: 10px 13px;
+    border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+    background: var(--color-surface); color: var(--color-ink);
+  }
+  .f textarea { min-height: 62px; resize: vertical; }
+  .f input:focus, .f select:focus, .f textarea:focus { outline: 2px solid var(--color-azure); outline-offset: 1px; }
+  .wide { justify-content: center; }
+
+  .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+         justify-content: space-between; margin-bottom: 20px; }
+  .top-act { display: flex; gap: 16px; }
+  .lnk { font: inherit; font-size: 0.88rem; color: var(--color-azure); background: none; border: 0;
+         cursor: pointer; padding: 0; min-height: 44px; display: inline-flex; align-items: center; }
+  .lnk:hover { text-decoration: underline; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 6px; margin: 18px 0 14px; }
+  .tab { font: inherit; font-size: 0.9rem; min-height: 44px; padding: 0 18px; cursor: pointer;
+         border: 1px solid var(--color-line); border-radius: var(--radius-pill); background: transparent; }
+  .tab.is-on { background: var(--color-ink); color: var(--color-canvas); border-color: var(--color-ink); }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .add { justify-content: center; margin-bottom: 14px; }
+
+  .sheet { position: fixed; inset: 0; z-index: 90; display: grid; place-items: end center; }
+  .sheet[hidden] { display: none; }
+  .sheet-bg { position: absolute; inset: 0; background: rgba(15, 25, 45, 0.5); }
+  .sheet-card { position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow: auto;
+                background: var(--color-canvas); border-radius: 18px 18px 0 0;
+                padding: 20px 20px 28px; display: grid; gap: 12px;
+                /* minmax(0, 1fr), а не 1fr: элемент сетки по умолчанию
+                   не сжимается уже своего содержимого, и поля вылезали
+                   за правый край карточки — на телефоне их обрезало. */
+                grid-template-columns: minmax(0, 1fr); }
+  .sheet-card > * { min-width: 0; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .x { font: inherit; font-size: 1.1rem; background: none; border: 0; cursor: pointer;
+       min-width: 44px; min-height: 44px; color: var(--color-muted); }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .grid2 > * { min-width: 0; }
+  .sizes { border: 1px solid var(--color-hairline); border-radius: var(--radius-soft); padding: 12px 14px; }
+  .sizes legend { font-size: 0.78rem; color: var(--color-faint); padding: 0 6px; }
+  .chk { display: flex; align-items: center; gap: 9px; font-size: 0.9rem; min-height: 44px; }
+  .hint { margin: -6px 0 0; font-size: 0.78rem; color: var(--color-faint); line-height: 1.5; }
+  .sheet-act { display: flex; gap: 10px; margin-top: 4px; }
+  .msg { margin: 0; font-size: 0.86rem; color: var(--color-muted); min-height: 20px; }
+  .msg.err { color: #B03A3A; }
+  .msg.ok { color: #1F6B3D; }
+
+  @media (min-width: 560px) { .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  @media (min-width: 700px) {
+    .sheet { place-items: center; }
+    .sheet-card { border-radius: 18px; }
+  }
+</style>
+
+<!-- Заказы, товары, плашки статусов и поля остатков рисует скрипт.
+     Astro помечает своими стилями только то, что есть в шаблоне; созданным
+     элементам метки не достаётся, и правила молча не применяются — карточки
+     превращаются в простой текст. Поэтому эти стили глобальные и прижаты
+     к .adm, чтобы не текли на остальной сайт. -->
+<style is:global>
+  .adm .stat { background: var(--color-canvas); border: 1px solid var(--color-hairline);
+               border-radius: var(--radius-soft); padding: 14px 16px; }
+  .adm .stat b { display: block; font-size: 1.4rem; font-weight: 500; letter-spacing: -0.02em; }
+  .adm .stat span { display: block; font-size: 0.76rem; color: var(--color-faint); margin-top: 2px; }
+
+  .adm .low { background: #FFF3D4; border-radius: var(--radius-soft); padding: 12px 16px;
+              font-size: 0.86rem; color: #7A5A12; margin-bottom: 16px; line-height: 1.6; }
+  .adm .low[hidden] { display: none; }
+
+  .adm .flt { font: inherit; font-size: 0.8rem; min-height: 38px; padding: 0 14px; cursor: pointer;
+              border: 1px solid var(--color-line); border-radius: var(--radius-pill); background: transparent; }
+  .adm .flt.is-on { border-color: var(--color-azure); background: var(--color-azure-wash); }
+
+  .adm .list { display: grid; gap: 10px; }
+  .adm .row-card { background: var(--color-canvas); border: 1px solid var(--color-hairline);
+                   border-radius: var(--radius-soft); padding: 14px 16px; display: grid; gap: 8px; }
+  .adm .row-card.off { opacity: 0.55; }
+  .adm .rc-top { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline;
+                 justify-content: space-between; }
+  .adm .rc-id { font-weight: 500; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .adm .rc-sum { font-size: 1.05rem; font-weight: 500; white-space: nowrap; }
+  .adm .rc-line { margin: 0; font-size: 0.86rem; color: var(--color-muted); line-height: 1.6; }
+  .adm .rc-line a { color: var(--color-azure); }
+  .adm .rc-act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .adm .rc-act select { font: inherit; font-size: 0.84rem; min-height: 40px; padding: 0 10px;
+                        border: 1px solid var(--color-line); border-radius: var(--radius-soft);
+                        background: var(--color-surface); color: var(--color-ink); }
+
+  .adm .pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 999px; white-space: nowrap; font-weight: 400; }
+  .adm .s-pending  { background: #EDF1F7; color: #4A5673; }
+  .adm .s-checking { background: #FFF3D4; color: #7A5A12; }
+  .adm .s-paid     { background: #DCF0E3; color: #1F6B3D; }
+  .adm .s-sent     { background: var(--color-azure-wash); color: #1B4FA8; }
+  .adm .s-done     { background: #E4E8EF; color: #4A5673; }
+  .adm .s-cancelled{ background: #FBE3E3; color: #8C2B2B; }
+
+  .adm .prod { display: grid; grid-template-columns: 54px 1fr; gap: 12px; align-items: start; }
+  .adm .prod img { width: 54px; height: 72px; object-fit: cover; border-radius: 8px; background: var(--color-surface); }
+  .adm .stk { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .adm .stk label { display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--color-muted); }
+  .adm .stk input { font: inherit; width: 56px; min-height: 38px; padding: 0 8px; text-align: center;
+                    border: 1px solid var(--color-line); border-radius: 8px;
+                    background: var(--color-surface); color: var(--color-ink); }
+
+  .adm .size-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .adm .size-row input { font: inherit; min-height: 40px; padding: 0 10px;
+                         border: 1px solid var(--color-line); border-radius: 8px;
+                         background: var(--color-surface); color: var(--color-ink); }
+  .adm .size-row .sz { flex: 1; min-width: 0; }
+  .adm .size-row .qt { width: 84px; text-align: center; }
+  .adm .size-row .del { font: inherit; background: none; border: 0; cursor: pointer;
+                        color: var(--color-faint); min-width: 40px; min-height: 40px; }
+</style>
+
+<script>
+  const $ = (s: string) => document.querySelector(s) as HTMLElement | null;
+  const money = (k: number) => `${Math.round(k / 100).toLocaleString('ru')} ₽`;
+  const esc = (v: unknown) =>
+    String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const STATUS: Record<string, string> = {
+    pending: 'ждёт оплаты', checking: 'проверяем оплату', paid: 'оплачен',
+    sent: 'отправлен', done: 'доставлен', cancelled: 'отменён',
+  };
+
+  const api = async (path: string, opts?: RequestInit) => {
+    const r = await fetch(path, { credentials: 'same-origin', ...opts });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((d as any)?.error || 'Ошибка запроса');
+    return d as any;
+  };
+
+  const show = (v: 'login' | 'work') => {
+    ['login', 'work'].forEach((n) => {
+      const el = document.querySelector(`[data-view="${n}"]`) as HTMLElement | null;
+      if (el) el.hidden = n !== v;
+    });
+  };
+
+  /* ── вход ───────────────────────────────────────────────────────── */
+  const loginForm = $('[data-login]') as HTMLFormElement | null;
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('[data-login-msg]')!;
+    msg.className = 'msg';
+    msg.textContent = 'Проверяем…';
+    try {
+      const fd = new FormData(loginForm);
+      await api('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', password: fd.get('password') }),
+      });
+      msg.textContent = '';
+      show('work');
+      loadAll();
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = (err as Error).message;
+    }
+  });
+
+  $('[data-logout]')?.addEventListener('click', async () => {
+    await api('/api/admin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    }).catch(() => {});
+    location.reload();
+  });
+
+  /* ── вкладки ────────────────────────────────────────────────────── */
+  document.querySelectorAll('.tab').forEach((t) =>
+    t.addEventListener('click', () => {
+      const name = (t as HTMLElement).dataset.tab!;
+      document.querySelectorAll('.tab').forEach((x) => {
+        const on = x === t;
+        x.classList.toggle('is-on', on);
+        x.setAttribute('aria-selected', String(on));
+      });
+      ['orders', 'products'].forEach((n) => {
+        const pane = document.querySelector(`[data-pane="${n}"]`) as HTMLElement | null;
+        if (pane) pane.hidden = n !== name;
+      });
+    }),
+  );
+
+  /* ── данные ─────────────────────────────────────────────────────── */
+  let orders: any[] = [];
+  let products: any[] = [];
+  let filter = 'all';
+
+  async function loadAll() {
+    try {
+      const [o, p, s] = await Promise.all([
+        api('/api/admin?what=orders'),
+        api('/api/admin?what=products'),
+        api('/api/admin?what=stats'),
+      ]);
+      orders = o.orders; products = p.products;
+      paintStats(s); paintFilters(); paintOrders(); paintProducts();
+    } catch {
+      show('login');
+    }
+  }
+
+  function paintStats(s: any) {
+    const st = s.stats || {};
+    $('[data-stats]')!.innerHTML = [
+      ['Выручка', money(st.revenue || 0)],
+      ['Оплачено заказов', st.paid_orders || 0],
+      ['Всего заказов', st.all_orders || 0],
+      ['Ждут проверки', st.waiting || 0],
+    ].map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+
+    // Заканчивающиеся размеры показываем сразу: узнать об этом из заказа,
+    // который нечем закрыть, — худший способ.
+    const low = $('[data-low]')!;
+    if (s.low?.length) {
+      low.hidden = false;
+      low.innerHTML = 'Заканчивается: ' + s.low
+        .map((r: any) => `${esc(r.name)} · ${esc(r.size)} — ${r.qty === 0 ? 'нет' : r.qty + ' шт'}`)
+        .join(' · ');
+    } else low.hidden = true;
+  }
+
+  function paintFilters() {
+    const counts: Record<string, number> = { all: orders.length };
+    for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
+    const keys = ['all', 'checking', 'paid', 'sent', 'done', 'pending', 'cancelled'].filter((k) => counts[k]);
+    $('[data-filters]')!.innerHTML = keys.map((k) =>
+      `<button class="flt${k === filter ? ' is-on' : ''}" data-f="${k}">${k === 'all' ? 'Все' : esc(STATUS[k])} ${counts[k]}</button>`).join('');
+    document.querySelectorAll('[data-f]').forEach((b) =>
+      b.addEventListener('click', () => { filter = (b as HTMLElement).dataset.f!; paintFilters(); paintOrders(); }));
+  }
+
+  function paintOrders() {
+    const list = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+    if (!list.length) { $('[data-orders]')!.textContent = 'Заказов нет.'; return; }
+    $('[data-orders]')!.innerHTML = list.map((o) => {
+      const items = (o.items || []).map((i: any) =>
+        `${esc(i.name)}${i.size ? ' · ' + esc(i.size) : ''} × ${i.qty}`).join(', ');
+      const date = new Date(o.created_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const opts = Object.entries(STATUS)
+        .map(([k, v]) => `<option value="${k}"${k === o.status ? ' selected' : ''}>${esc(v)}</option>`).join('');
+      return `<article class="row-card">
+        <div class="rc-top">
+          <span class="rc-id">${esc(o.code || o.id)} <span class="pill s-${o.status}">${esc(STATUS[o.status] || o.status)}</span></span>
+          <span class="rc-sum">${money(o.total)}</span>
+        </div>
+        <p class="rc-line">${items}</p>
+        <p class="rc-line"><b>${esc(o.name)}</b> · <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a> · ${esc(o.email)}</p>
+        <p class="rc-line">${esc(o.address)}</p>
+        <p class="rc-line">${date} · ${o.payment_method === 'cash' ? 'наличными курьеру' : 'перевод по СБП'}${o.receipt_url ? ` · <a href="${esc(o.receipt_url)}" target="_blank" rel="noopener">чек</a>` : ''}</p>
+        <div class="rc-act">
+          <select data-status="${esc(o.id)}">${opts}</select>
+        </div>
+      </article>`;
+    }).join('');
+
+    document.querySelectorAll('[data-status]').forEach((sel) =>
+      sel.addEventListener('change', async (e) => {
+        const el = e.currentTarget as HTMLSelectElement;
+        el.disabled = true;
+        try {
+          await api('/api/admin', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'order_status', id: el.dataset.status, status: el.value }),
+          });
+          await loadAll();
+        } catch (err) {
+          alert((err as Error).message);
+          el.disabled = false;
+        }
+      }));
+  }
+
+  function paintProducts() {
+    $('[data-products]')!.innerHTML = products.map((p) => {
+      const stock = p.sizes.map((sz: string) =>
+        `<label>${esc(sz)}<input type="number" min="0" value="${p.stock[sz] ?? 0}" data-stock="${esc(p.id)}" data-size="${esc(sz)}" /></label>`).join('');
+      return `<article class="row-card${p.active ? '' : ' off'}">
+        <div class="prod">
+          <img src="${esc(p.photo)}" alt="" loading="lazy" />
+          <div>
+            <div class="rc-top">
+              <span class="rc-id">${esc(p.name)} <span class="pill s-done">${esc(p.id)}</span></span>
+              <span class="rc-sum">${p.price.toLocaleString('ru')} ₽</span>
+            </div>
+            <p class="rc-line">${esc(p.category)} · ${esc(p.colour)}${p.hit ? ' · часто берут' : ''}${p.active ? '' : ' · СКРЫТ'}</p>
+            <div class="stk">${stock}</div>
+            <div class="rc-act" style="margin-top:8px">
+              <button class="lnk" data-edit="${esc(p.id)}">Изменить</button>
+              <button class="lnk" data-toggle="${esc(p.id)}">${p.active ? 'Скрыть' : 'Показать'}</button>
+            </div>
+          </div>
+        </div>
+      </article>`;
+    }).join('');
+
+    // Остаток правится прямо в списке: ради одной цифры открывать карточку —
+    // лишний шаг, а делают это чаще всего остального.
+    document.querySelectorAll('[data-stock]').forEach((inp) =>
+      inp.addEventListener('change', async (e) => {
+        const el = e.currentTarget as HTMLInputElement;
+        el.disabled = true;
+        try {
+          await api('/api/admin', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'save_stock', id: el.dataset.stock, size: el.dataset.size, qty: el.value }),
+          });
+          el.style.borderColor = 'var(--color-azure)';
+          setTimeout(() => { el.style.borderColor = ''; }, 900);
+        } catch (err) { alert((err as Error).message); }
+        el.disabled = false;
+      }));
+
+    document.querySelectorAll('[data-toggle]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        await api('/api/admin', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_product', id: (b as HTMLElement).dataset.toggle }),
+        });
+        loadAll();
+      }));
+
+    document.querySelectorAll('[data-edit]').forEach((b) =>
+      b.addEventListener('click', () => openSheet(products.find((p) => p.id === (b as HTMLElement).dataset.edit))));
+  }
+
+  /* ── карточка товара ────────────────────────────────────────────── */
+  const sheet = $('[data-sheet]')!;
+  const form = $('[data-form]') as HTMLFormElement;
+  const sizesBox = $('[data-sizes]')!;
+
+  const sizeRow = (size = '', qty = 0) => {
+    const d = document.createElement('div');
+    d.className = 'size-row';
+    d.innerHTML = `<input class="sz" placeholder="M" value="${esc(size)}" />
+      <input class="qt" type="number" min="0" value="${qty}" />
+      <button class="del" type="button" aria-label="Убрать размер">✕</button>`;
+    d.querySelector('.del')!.addEventListener('click', () => d.remove());
+    return d;
+  };
+
+  function openSheet(p?: any) {
+    $('[data-form-title]')!.textContent = p ? 'Изменить товар' : 'Новый товар';
+    $('[data-form-msg]')!.textContent = '';
+    form.reset();
+    sizesBox.innerHTML = '';
+    if (p) {
+      (form.elements.namedItem('id') as HTMLInputElement).value = p.id;
+      (form.elements.namedItem('id') as HTMLInputElement).readOnly = true;
+      (form.elements.namedItem('name') as HTMLInputElement).value = p.name;
+      (form.elements.namedItem('price') as HTMLInputElement).value = p.price;
+      (form.elements.namedItem('oldPrice') as HTMLInputElement).value = p.oldPrice ?? '';
+      (form.elements.namedItem('category') as HTMLSelectElement).value = p.category;
+      (form.elements.namedItem('colour') as HTMLInputElement).value = p.colour;
+      (form.elements.namedItem('composition') as HTMLInputElement).value = p.composition;
+      (form.elements.namedItem('text') as HTMLTextAreaElement).value = p.text;
+      (form.elements.namedItem('photo') as HTMLInputElement).value = p.photo;
+      (form.elements.namedItem('hit') as HTMLInputElement).checked = !!p.hit;
+      p.sizes.forEach((sz: string) => sizesBox.append(sizeRow(sz, p.stock[sz] ?? 0)));
+    } else {
+      (form.elements.namedItem('id') as HTMLInputElement).readOnly = false;
+      sizesBox.append(sizeRow('один размер', 0));
+    }
+    sheet.hidden = false;
+  }
+
+  $('[data-new]')?.addEventListener('click', () => openSheet());
+  $('[data-add-size]')?.addEventListener('click', () => sizesBox.append(sizeRow()));
+  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { sheet.hidden = true; }));
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('[data-form-msg]')!;
+    msg.className = 'msg';
+    msg.textContent = 'Сохраняем…';
+    const fd = new FormData(form);
+    const sizes = [...sizesBox.querySelectorAll('.size-row')].map((r) => ({
+      size: (r.querySelector('.sz') as HTMLInputElement).value,
+      qty: (r.querySelector('.qt') as HTMLInputElement).value,
+    })).filter((s) => s.size.trim());
+    try {
+      await api('/api/admin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_product',
+          product: {
+            id: fd.get('id'), name: fd.get('name'), price: fd.get('price'),
+            oldPrice: fd.get('oldPrice') || null, category: fd.get('category'),
+            colour: fd.get('colour'), composition: fd.get('composition'),
+            text: fd.get('text'), photo: fd.get('photo'),
+            hit: fd.get('hit') === 'on', sizes,
+          },
+        }),
+      });
+      msg.className = 'msg ok';
+      msg.textContent = 'Сохранено';
+      setTimeout(() => { sheet.hidden = true; }, 500);
+      loadAll();
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = (err as Error).message;
+    }
+  });
+
+  /* Если сессия жива — сразу в рабочую часть, без лишнего ввода пароля. */
+  api('/api/admin?what=stats').then(() => { show('work'); loadAll(); }).catch(() => show('login'));
+</script>
